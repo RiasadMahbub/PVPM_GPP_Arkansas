@@ -3,6 +3,7 @@
 ##Site USOF1
 ## Read the data
 # location of the data: "/Users/riasadbinmahbub/Box/Courses/Spring2022/BENG5963/ECData_otherRiceSites"
+# how to access 95%: https://www.r-bloggers.com/2021/07/asymptotic-confidence-intervals-for-nls-regression-in-r/
 
 #Load the required Libraries
 library(REddyProc)
@@ -18,9 +19,7 @@ library(minpack.lm)
 library(bigleaf)
 library(anytime)
 
-
 ## Latest file with data stamp: Rice Data_Research Group_03-10-2022.xlsx 
-
 ## OF1 is in sheet 8 RiceData_ResearchGroup03-10-2022
 ## OF 2 is in sheet 9 RiceData_ResearchGroup03-10-2022
 # Reading the data removing the unit row
@@ -143,17 +142,25 @@ MODISdoy <- list(
 data_frames <- list()
 points<- list()
 DOYlist<- list()
-LUEmax<- list()
+LUEmaxGPP<- list() ## LUEmax estimation GPP-APAR curve (list)
+LUEmaxNEE<-list() ## LUEmax estimation NEE-APAR curve (list)
+LUEmaxGPPmax<- list() ## LUEmax estimation GPPmax-APAR curve (list)
+LUEmaxNEEmax<-list()## LUEmax estimation NEEmax-APAR curve (list)
+lightresponsegs<-list() ## LUEmax estimation NEE curve from bigleaf package
+modellistGPP<-list() ## store the model result of the non linear regression of GPP curve
+modellistNEE<-list()
+modellistGPPmax<-list() ## store the model result of the non linear regression of GPP curve
+modellistNEEmax<-list()
+lightresponsegs_modellist<-list() ##store the model result of the non linear regression of GPP curve
 dflist<-list()
-modellist<-list()
 stderror<-list()
 rsquared<-list()
 rss<-list()
 rmse<-list()
 avgsdevsub<-list()
 avgsdevadd<-list()
-lightresponsegs<-list()
-
+DOYlist<- list()
+DOYlist2<- list()
 
 # Read the data from each sheet and store in the list
 for (var_name in names(sheet_cols)) {
@@ -168,15 +175,98 @@ for (var_name in names(sheet_cols)) {
   data_frames[[var_name]]$Date <- as.Date(data_frames[[var_name]]$datetime) ## Extract the date from the datetime format,   # Get the date column from the dt
   data_frames[[var_name]]$DOY <- yday(data_frames[[var_name]]$datetime) # Add the DOY column
   data_frames[[var_name]] <- filter(data_frames[[var_name]], DOY >= MODISdoy[[var_name]]) # Filter the data frame based on the MODISdoy value for the current sheet
-  points[[var_name]]<-as.integer((max(data_frames[[var_name]] $DOY)- min(data_frames[[var_name]] $DOY))/8) ## how many 8 day data points will be there
+}
+
+### Satellite Site Calibration Part
+# Set the directory path where your CSV files are located
+directory_path <- "/Users/riasadbinmahbub/RProgramming/GapfillingOtherRiceSites/GapfillingOtherRiceSites/Data/Satellite-SiteCalibrationCSV"
+
+# Get a list of all CSV files in the directory
+csv_files <- list.files(path = directory_path, pattern = "\\.csv$", full.names = TRUE)
+
+# Create an empty list to store the data frames
+data_frames_satellitecalibration <- list()
+
+# Loop through each CSV file, read it, and store it as a variable with the filename
+for (csv_file in csv_files) {
+  # Extract the filename without extension
+  file_name <- tools::file_path_sans_ext(basename(csv_file))
+  
+  # Read the CSV file and store it as a data frame
+  data <- read.csv(csv_file)
+  
+  # Rename the "date" column to "Date"
+  if ("date" %in% names(data)) {
+    names(data)[names(data) == "date"] <- "Date"
+    
+    # Change the class of the "Date" column to date type
+    data$Date <- as.Date(data$Date, format="%Y-%m-%d")
+  }
+  # Add a new column with the filename information
+  data$FileName <- file_name
+  # Assign the data frame to a variable with the filename
+  assign(file_name, data)
+  
+  # Add the data frame to the list
+  data_frames_satellitecalibration[[file_name]] <- data
+}
+
+# Print the list of data frames
+print(data_frames_satellitecalibration)
+
+# Create a list to store the merged data frames
+merged_data_frames <- list()
+
+# Loop through each data frame in data_frames_satellitecalibration
+for (name in names(data_frames_satellitecalibration)) {
+  # Check if the data frame exists in data_frames
+  if (name %in% names(data_frames)) {
+    # Merge the data frames based on the "Date" column
+    merged_df <- merge(data_frames[[name]], data_frames_satellitecalibration[[name]], by = "Date", all.x = TRUE)
+    
+    # Extract columns to interpolate
+    columns_to_interpolate <- c("EVI_SG", "FAPAR", "LSWI_INP")
+    
+    # Loop through each column and perform linear interpolation
+    for (col_name in columns_to_interpolate) {
+      # Perform linear interpolation
+      interpolated_values <- approx(x = merged_df$Date, y = merged_df[[col_name]], method = "linear", n = nrow(merged_df))  #merging files
+      
+      # Update the data frame with interpolated values
+      merged_df[[col_name]] <- interpolated_values$y ## interpolating the values
+    }
+    
+    # Add the merged data frame to the list
+    merged_data_frames[[name]] <- merged_df
+    merged_data_frames[[name]]$APAR <- merged_data_frames[[name]]$PAR_Regression* merged_data_frames[[name]]$FAPAR## calculate the APAR
+  }
+}
+
+dev.off()
+plot(merged_data_frames$USBDA_2015$APAR, merged_data_frames$USBDA_2015$NEE_REddyProc, col = merged_data_frames$USBDA_2015$DOY)
+plot(merged_data_frames$USBDA_2015$PAR_Regression, merged_data_frames$USBDA_2015$NEE_REddyProc, col = merged_data_frames$USBDA_2015$DOY)
+
+
+
+for (var_name in names(sheet_cols)) {  
+  points[[var_name]]<-as.integer((max(merged_data_frames[[var_name]]$DOY)- min(merged_data_frames[[var_name]] $DOY))/8) ## how many 8 day data points will be there
   DOYlist[[var_name]]<-rep(0, points[[var_name]]+1) ##Creating a list of DOYlist (DOYlist is 1 greater than LUEMax length)
-  LUEmax[[var_name]]<-rep(0,points[[var_name]]) ## this list will store the luemax values
+  DOYlist2[[var_name]]<-rep(0, points[[var_name]]) ## DOY with one less DOY to merge the files later
+  LUEmaxGPP[[var_name]]<-rep(0,points[[var_name]]) ## this list will store the luemax values
+  LUEmaxNEE[[var_name]]<-rep(0,points[[var_name]])
+  LUEmaxGPPmax[[var_name]]<-rep(0,points[[var_name]]) ## this list will store the luemax values
+  LUEmaxNEEmax[[var_name]]<-rep(0,points[[var_name]])
+  lightresponsegs[[var_name]]<-rep(0,points[[var_name]])## this list will store the luemax values from bigleaf analysis
 
   ## creating some dataframes that will store the data based on 8 day windows
   for (i in 1:(length(DOYlist[[var_name]])-1)){
     DOYlist[[var_name]][1] = MODISdoy[[var_name]]
     DOYlist[[var_name]][i+1]=DOYlist[[var_name]][i]+ 8
+    DOYlist2[[var_name]][1] = MODISdoy[[var_name]]
+    DOYlist2[[var_name]][i+1]=DOYlist2[[var_name]][i]+ 8
+    #DOYlist2[[var_name]]<-DOYlist2[[var_name]][-length(DOYlist2[[var_name]])]
   }
+  DOYlist2[[var_name]]<-DOYlist2[[var_name]][-length(DOYlist2[[var_name]])]
   
   ## Creating a list of empty dataframes
   for (i in 1:points[[var_name]]){
@@ -184,44 +274,168 @@ for (var_name in names(sheet_cols)) {
   }
   ###Storing the data in the empty dataframes
   for (i in 1: length(dflist[[var_name]])){
-    dflist[[var_name]][[i]]<- subset(data_frames[[var_name]], DOY>=DOYlist[[var_name]][i] & DOY<DOYlist[[var_name]][i+1])
+    dflist[[var_name]][[i]]<- subset(merged_data_frames[[var_name]], DOY>=DOYlist[[var_name]][i] & DOY<DOYlist[[var_name]][i+1])
     dflist[[var_name]][[i]]<-subset(dflist[[var_name]][[i]], PAR_Regression>20)
+    #percentile_95 <- quantile(dflist[[var_name]][[i]]$GPP_modeled, 0.85)
+    #dflist[[var_name]][[i]] <- subset(dflist[[var_name]][[i]], GPP_modeled > percentile_95) ## subsetting GPP above 95th percentile
+    #dflist[[var_name]][[i]]$APAR <-dflist[[var_name]][[i]]$FAPAR* dflist[[var_name]][[i]]$PAR_Regression ## calculate the APAR
   }
-  
+
   for (i in 1:points[[var_name]]){
-    modellist[[var_name]][[i]]<-data.frame()
+    modellistGPP[[var_name]][[i]]<-data.frame()
+    modellistNEE[[var_name]][[i]]<-data.frame()
+    modellistGPPmax[[var_name]][[i]]<-data.frame()
+    modellistNEEmax[[var_name]][[i]]<-data.frame()
+    lightresponsegs_modellist[[var_name]][[i]]<-data.frame()
   }
-  
+
   stderror[[var_name]]<-rep(0, points[[var_name]])
   rsquared[[var_name]]<-rep(0, points[[var_name]])
   rss[[var_name]]<-rep(0, points[[var_name]])
   rmse[[var_name]]<-rep(0, points[[var_name]])
-  
+  ### Read the files of Site Calibration 
+  ### PAR to APAR
+
   for (i in (1:points[[var_name]])){
     y<-dflist[[var_name]][[i]]$GPP_modeled
-    x<-dflist[[var_name]][[i]]$PAR_Regression
-    modellist[[var_name]][[i]]<-nlsLM((y) ~ (((a * (x) * g)/(a * (x)+ g))), start=list(a=   0.0548 ,g= 25))
-    LUEmax[[var_name]][[i]]<-modellist[[var_name]][[i]]$m$getPars()[1]
-    stderror[[var_name]][i]<-summary(modellist[[var_name]][[i]])$parameters[1,2]
-    rss[[var_name]][i]<-sum((modellist[[var_name]][[i]]$m$resid())^2)
-    rmse[[var_name]][i]<-sqrt(crossprod(modellist[[var_name]][[i]]$m$resid())/(length(modellist[[var_name]][[i]]$m$resid())))
+    x<-dflist[[var_name]][[i]]$APAR  ## changed to APAR, before it was PAR
+    NEE<-dflist[[var_name]][[i]]$NEE_modeled
+    Reco<-dflist[[var_name]][[i]]$Reco_modeled
+    modellistGPP[[var_name]][[i]]<-nlsLM((y) ~ (((a * (x) * g)/(a * (x)+ g))), start=list(a= 0.03 ,g= 25),   ## what should the parameters value
+                                      lower = c(a = 0, g = 0),  # Set lower bound for 'a'
+                                      upper = c(a = 100, g =200) )
+
+    modellistNEE[[var_name]][[i]]<-nlsLM((-NEE ~ alpha * x / (1 - (x / 2000) + (alpha * x / GPP_ref)) - Reco),
+                                          start=list(alpha=0.05,GPP_ref=30))
+    modellistGPPmax[[var_name]][[i]]<-nlstools::confint2(modellistGPP[[var_name]][[i]], level = 0.90, method = "asymptotic")
+    modellistNEEmax[[var_name]][[i]]<-nlstools::confint2(modellistNEE[[var_name]][[i]], level = 0.90, method = "asymptotic")
+    LUEmaxGPP[[var_name]][[i]]<-modellistGPP[[var_name]][[i]]$m$getPars()[1]
+    LUEmaxNEE[[var_name]][[i]]<-modellistNEE[[var_name]][[i]]$m$getPars()[1]
+    LUEmaxGPPmax[[var_name]][[i]]<-modellistGPPmax[[var_name]][[i]][1]
+    LUEmaxNEEmax[[var_name]][[i]]<-modellistNEEmax[[var_name]][[i]][1]
+    
+    stderror[[var_name]][i]<-summary(modellistGPP[[var_name]][[i]])$parameters[1,2]
+    rss[[var_name]][i]<-sum((modellistGPP[[var_name]][[i]]$m$resid())^2)
+    rmse[[var_name]][i]<-sqrt(crossprod(modellistGPP[[var_name]][[i]]$m$resid())/(length(modellistGPP[[var_name]][[i]]$m$resid())))
     rsquared[[var_name]][i] <-  1-(rss[[var_name]][i]/sum((y - mean(y))^2))
   }
+ 
+
+  
   avgsdevsub[[var_name]]<-rep(0,points[[var_name]])
   avgsdevadd[[var_name]]<-rep(0,points[[var_name]])
   for (i in (1:points[[var_name]])){
-    avgsdevsub[[var_name]][i]<-(summary(modellist[[var_name]][[i]])$parameters[1,1]) - (summary(modellist[[var_name]][[i]])$parameters[1,2])
-    avgsdevadd[[var_name]][i]<- (summary(modellist[[var_name]][[i]])$parameters[1,1]) + (summary(modellist[[var_name]][[i]])$parameters[1,2])
+    avgsdevsub[[var_name]][i]<-(summary(modellistGPP[[var_name]][[i]])$parameters[1,1]) - (summary(modellistGPP[[var_name]][[i]])$parameters[1,2])
+    avgsdevadd[[var_name]][i]<- (summary(modellistGPP[[var_name]][[i]])$parameters[1,1]) + (summary(modellistGPP[[var_name]][[i]])$parameters[1,2])
   }
-  lightresponsegs[[var_name]]<-light.response(data = data_frames[[var_name]], data_frames[[var_name]]$NEE_modeled, Reco=data_frames[[var_name]]$Reco_modeled,PPFD=data_frames[[var_name]]$PAR_Regression,PPFD_ref=2000)
+  lightresponsegs[[var_name]]<-light.response(data = merged_data_frames[[var_name]], merged_data_frames[[var_name]]$NEE_modeled, Reco=merged_data_frames[[var_name]]$Reco_modeled,PPFD=merged_data_frames[[var_name]]$PAR_Regression,PPFD_ref=2000)
+  #lightresponsegs_modellist[[var_name]][i]<-light.response(data = merged_data_frames[[var_name]][i], merged_data_frames[[var_name]][i]$NEE_modeled, Reco=merged_data_frames[[var_name]][i]$Reco_modeled,PPFD=merged_data_frames[[var_name]][i]$PAR_Regression,PPFD_ref=2000)
+  #lightresponsegs[[var_name]][[i]]<-lightresponsegs_modellist[[var_name]][[i]]$m$getPars()[1]
 }
 
+lightresponsegs
+plot(LUEmaxNEE[[2]])
+
+nlstools::confint2(modellistNEE$USOF1_2017[[1]], level = 0.60, method = "asymptotic")
+
+LUEmaxNEEmax
+
+lightresponsegs$USOF1_2017$m$getPars()[1]
+plot_directory <- "/Users/riasadbinmahbub/RProgramming/GapfillingOtherRiceSites/GapfillingOtherRiceSites/Figure/LightResponseCurve/GPP_APAR_NLSM"
 lightresponsegs$USOF1_2017$m$getPars()
+lightresponsegs
 
+plot(LUEmax[[3]])
+plot(LUEmax[[1]][(4:6)])
 plot(LUEmax[[13]])
+rss
+par(mfrow = c(1, 1))
+par(mar=c(2, 2, 2, 2))
+hist(merged_data_frames$USHRC_2016$GPP_modeled)
+plot(merged_data_frames$USHRC_2017$APAR, merged_data_frames$USHRC_2017$GPP_modeled, col = merged_data_frames$USHRC_2016$PAR_Regression)
+### Write a code that gives the plot of all the hyperbolic curve and stores in a folder
+
+### convert the list to a dataframes
+# Convert the list to a dataframe
+# Convert the list to a dataframe
+
+LUEmaxGPPdf<-stack(LUEmaxGPP)
+LUEmaxNEEdf<-stack(LUEmaxNEE)
+LUEmaxGPPmaxdf<-stack(LUEmaxGPPmax)
+LUEmaxNEEmaxdf<-stack(LUEmaxNEEmax)
+DOY_df <-stack(DOYlist2)
+
+LUEmax<- do.call("cbind", list(LUEmaxGPPdf, LUEmaxNEEdf, LUEmaxGPPmaxdf, LUEmaxNEEmaxdf, DOY_df))
+LUEmaxGDD<-do.call("rbind", list(USOF1VI8day, USOF2VI8day, USOF3VI8day, USOF4VI8day, USOF5VI8day, USOF6VI8day, USBDA2015VI8day, USBDC2015VI8day, USBDCC2016VI8day, USBDA2016VI8day, USHRA_2015VI8day, USHRA_2016VI8day, USHRA_2017VI8day, USHRC_2015VI8day, USHRC_2016VI8day, USHRC_2017VI8day))
+View(LUEmax)
 
 
+nrow(LUEmaxGPPdf)
+nrow(LUEmaxNEEdf)
+nrow(LUEmaxGPPmaxdf)
+nrow(LUEmaxNEEmaxdf)
+nrow(DOY_df)
 
+
+stderror_df <- stack(stderror)
+LUEmax_df<-stack(LUEmaxGPP)
+rsquared_df<-stack(rsquared)
+rss_df<-stack(rss)
+rmse_df<-stack(rmse)
+DOY_df <-stack(DOYlist)
+avgsdevsub_df<-stack(avgsdevsub)
+avgsdevadd_df<-stack(avgsdevadd)
+# Rename the columns
+colnames(stderror_df) <- c("StandardError", "Site")
+stderror_df$index <- 1:nrow(stderror_df)
+colnames(LUEmax_df)<-c("LUEmax", "Site")
+LUEmax_df$index <- 1:nrow(LUEmax_df)
+colnames(rsquared_df) <- c("rsquared", "Site")
+rsquared_df$index <- 1:nrow(rsquared_df)
+colnames(rmse_df)<-c("rmse", "Site")
+rmse_df$index <- 1:nrow(rmse_df)
+colnames(rss_df) <- c("rss", "Site")
+rss_df$index <- 1:nrow(rss_df)
+colnames(DOY_df)<-c("DOYlist", "Site")
+DOY_df$index <- 1:nrow(DOY_df)
+colnames(avgsdevsub_df) <- c("avgsdevsub", "Site")
+colnames(avgsdevadd_df)<-c("DOYlist", "Site")
+
+LUEmaxPerformancedf <- merge(stderror_df, LUEmax_df, by="index")
+LUEmaxPerformancedf <- merge(LUEmaxPerformancedf, rsquared_df, by="index")
+LUEmaxPerformancedf <- merge(LUEmaxPerformancedf, rss_df, by="index")
+LUEmaxPerformancedf <- merge(LUEmaxPerformancedf, rmse_df, by="index")
+LUEmaxPerformancedf <- merge(LUEmaxPerformancedf, DOY_df, by="index")
+
+LUEmaxPerformancedf
+### Merge all the LUEmax here and plot the LUEmax graph as a function of DAP and Cumulative GDD
+par(mfrow = c(1, 1))
+par(mar=c(2, 2, 2, 2))
+plot(LUEmaxPerformancedf$DOYlist, LUEmaxPerformancedf$LUEmax, ylim = c(0,0.1))
+hist(LUEmaxPerformancedf$LUEmax)
+View(LUEmaxPerformancedf)
+
+hist(LUEmax)
+
+### Predict GPP using all the data
+
+
+### Run cross validation set for all the data 80:20
+
+
+### Get the optimum parameters
+
+
+### Get the satellite data for EVI, PAR, Temperature
+
+
+### Plot result of the 
+
+# Set options to print numbers without exponent notation
+options(scipen = 999, digits = 10)
+LUEmax
+dflist$USOF1_2017[[12]]
+plot(dflist[[var_name]][[8]]$APAR, dflist[[var_name]][[8]]$GPP_modeled)
 
 # Assign the data frames to individual variables (optional)
 list2env(data_frames, envir = .GlobalEnv)
