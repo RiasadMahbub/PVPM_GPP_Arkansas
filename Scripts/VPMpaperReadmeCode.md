@@ -3,7 +3,7 @@
 Google drive folder:Satellite-SiteCalibrationCSV [all the excel sheets will be exported here]
 Directory of the satellite data in local directory: "C:/Users/rbmahbub/Box/Research/Data/VPM/SatelliteDataForSiteAnalysis"
 
-2. Run the SiteScaleAnalysis_DataReadingMerging.R and Function.R script to find the calibrated values and use them in the google earth engine code. 
+2. Run the SiteScaleAnalysis_DataReadingMerging.R and Function.R script to find the calibrated values and use them in the google earth engine code. In the beginning you will have these values. 
 Directory of the site scale EC data: "C:/Users/rbmahbub/Box/Courses/Spring2022/BENG5963 ECData_otherRiceSites/Rice Data_Research Group_05-23-2022.xlsx"
  Function.R script:
  1. Four functions to calculate Ts, GPP, calculate_metrics, and calculate_metrics_validation
@@ -62,6 +62,10 @@ Figure Exported: "C:\Users\rbmahbub\Documents\RProjects\VPM_Spatial\Figure"
 and
 Figure Exported R version: "C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Figure/"
 1. SiteScaleAnalysis_DataReadingMerging.R [Dataframe sitesatellitemergedDATA]
+    Finding the growing season and non-growing season GPP
+    satellitecombined_data dataframe has the information of satellite information
+    sitesatellitemergedDATAGPPng
+
 2. Function.R: [Dataframe sitesatellitemergedDATA]
     Topt <- mean(training_df$Topt)
     LUEmax_0_06512<-mean(training_df$LUEmax)
@@ -131,6 +135,12 @@ folds what are we predicting?
 We are trying to find the value of LUEmax and Topt the RMSE, MSE, bias are the lowest?
 
 We do not know the true LUEmax Topt for the whole rice growing region. However, we can look into the simulated data if the RMSE, MSE and bias is reduced in the test too. 
+
+
+### Checking how much pixels are rice or not
+#MODIS IMAGES: C:\Users\rbmahbub\Documents\Data\GeospatialData\CumulativeVPM\CumulativeVPM
+#Rice shapefile: 
+
 
 
 
