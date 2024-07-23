@@ -32,18 +32,20 @@ Site Scale analysis
 Exported Directory VPM images in google drive: CumulativeVPM
 Exported Images of other features: VPMDriver
 Cumulative VPM directory: C:/Users/rbmahbub/Documents/Data/GeospatialData/CumulativeVPM/CumulativeVPM/
+After exporting the images the Images are clipped based on 50% threshold pixel values using Distributioncheck50percentricepixelversusfullricepixel script
+So the directory folder of the raster images are changed 
+
 
 ##Modeling script:
 1. Plot scatterplot
 2. Plot Timeseries performance of VPM spatial and site
 3. Plot residual plots
+4. Project the rasters of EVI, LSWI and temp based on the projection of VPM
 
 
-### Drivers script: Drivers_EVI_T_Precipitation_LSWI.R
-Plot EVI, LSWI, Temp, PD, PAR vs GPP across multiple years. 
-Figure export across different years: 
-Tables export of all the years:
-Driver figure of all the year: 
+Export the csv files of the relation between GPP and LSWI, PD, Temp, PAR.
+projected_cumulativeEVIdflist will used later 
+
 
 
 gppricecounty dataframe
@@ -72,13 +74,44 @@ Figure Exported R version: "C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Fi
     VPM site: sitesatellitemergedDATA$GPP_0_06512_31_79
     VPM spatial: gpp
 3. ModeledPVPMVPM_satelliteProcessing.R dataframe sitesatellitemergedDATA
-4. AllDriverinOneScript-Projecting500.R:Spatial correlation here. The exported images from different directories are read here. 
+4. AllDriverinOneScript-Projecting500.R:Spatial correlation here. 
+    The exported images from different directories are read here. 
     Setting directory, stacking raster, finding the mean
     Files need: Crop frequency, EVI, 
+    
+    Define the directory path containing the raster files
+    List all .tif files in the specified directory
+    Read the shapefile for a region of interest (ME)
+
 5. Drivers_EVI_T_Precipitation_LSWI.R
+    1. read the directories of each EVI, LSWI, PAR, Temperature, PD, Cropping frequency, and vpm images
+    2. list the files
+    3. create a vector list and store the information in the vector list
+    4. 
+        Plot EVI, LSWI, Temp, PD, PAR vs GPP across multiple years. 
+        Figure export across different years: 
+        Tables export of all the years:
+        Driver figure of all the year: 
+
+
+    DataFrames Creation: Initialize empty DataFrames to store merged data.
+    Adding Year Information: Add a year column to each data frame in the projected lists.
+    Column Name Modification: Remove trailing year digits from the column names to ensure proper binding.
+        # Remove trailing four digits from column names
+    names(projected_cumulativeEVIdflistyear[[1]]) <- sub("\\d{4}$", "", names(projected_cumulativeEVIdflistyear[[1]]))
+    Row Binding: Bind rows from each year's data into the initialized DataFrames.
+    Column Combination: Combine the columns into a single DataFrame.
+    File Operations: Save the combined DataFrame to a CSV file and read it back.
+    Data Cleaning: Remove EVI values greater than 1 and omit NA values.
+    Plotting: Plot the distribution of the coverage fraction using ggplot2 with real numbers on the y-axis.
+
 6. VPMMeanRasterImageAnalysis2008_2020.R
+    Exports the filtered raster images at the end
 7. VPMYieldGPP_CountyMaps_Yearwise.R
 8. VPM_InterannualGraph.R
+9. Distributioncheck50percentricepixelversusfullricepixel
+    Checks the distribution of GPP in filtered raster of complete GPP and fractioned GPP
+
 
 
 #Graphs in the figure:
