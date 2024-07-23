@@ -1,0 +1,148 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var geometry = /* color: #d63000 */ee.Geometry.Point([-91.9773473262787, 35.279736613598985]);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// NCEP data
+var startDate = ee.Date('2020-01-01');
+var endDate = ee.Date('2020-12-31');
+
+var collection = ee.ImageCollection("NOAA/CFSV2/FOR6H")
+  .filterDate(startDate, endDate); // Filter for desired period
+
+// Renaming the bands function
+function renameBandsETMdswr(image) {
+  var bands = [
+    'Downward_Short-Wave_Radiation_Flux_surface_6_Hour_Average',
+    'Temperature_height_above_ground',
+    'Maximum_temperature_height_above_ground_6_Hour_Interval',
+    'Precipitation_rate_surface_6_Hour_Average'
+  ];
+  var new_bands = ['DSWR', 'Temp', 'Tmax', 'PPT'];
+
+  return image.select(bands).rename(new_bands);
+}
+
+var collection = collection.map(renameBandsETMdswr); // Apply renaming
+
+// 6 hourly to daily with selective statistics
+var numberOfDays = endDate.difference(startDate, 'days');
+var daily1 = ee.ImageCollection(
+  ee.List.sequence(0, numberOfDays.subtract(1))
+    .map(function(dayOffset) {
+      var start = startDate.advance(dayOffset, 'days');
+      var end = start.advance(1, 'days');
+      return collection
+        .filterDate(start, end)  // Filter for each day
+        // Calculate mean for DSWR, Temp, PPT and max for Tmax within the filter
+        .select(['DSWR', 'Temp', 'PPT']) // Select only relevant bands for mean calculation
+        .mean().rename(['meanDSWR', 'meanTemp', 'meanPPT']) // Rename mean bands
+        .addBands(collection.filterDate(start, end).select('Tmax').max().rename('maxTmax')) // Calculate and add max Tmax
+        .set('system:time_start', start.millis()); // Keep timestamp for reference
+    })
+);
+
+// Daily data with desired statistics is now in 'daily1' collection
+print(daily1); // You can now explore 'daily1' to see the bands
+// Plotting maxTmax and meanTemp from daily1 collection
+// Filter out null values for maxTmax and meanTemp
+
+// Get the region you're interested in (replace with your desired region).
+var region = geometry; // Example point
+
+// Create a time series by summarizing the bands over the region for each image.
+var timeSeries = daily1.map(function(image) {
+  var reducedImage = image.reduceRegion({
+    reducer: ee.Reducer.mean(),
+    geometry: region,
+    scale: null, // Use the original scale of the image.
+  });
+  // Access mean values and formatted date
+  return ee.Feature(null, {
+    'meanTemperature': reducedImage.get('meanTemp'),
+    'meanMaxTemperature': reducedImage.get('maxTmax'),
+    'formattedDate': reducedImage.get('formattedDate', ee.Date(image.get('system:time_start')).format('yyyy-MM-dd HH:mm:ss'))
+  });
+});
+
+print(timeSeries)
+
+// Get the chart from the time series.
+var chart = ui.Chart.feature.byFeature(timeSeries, 'formattedDate', 
+  ['meanTemperature', 'meanMaxTemperature']) // Include both means
+  .setOptions({
+    title: 'Temperature Time Series',
+    xAxis: {title: 'Date & Time'},
+    yAxis: {title: 'Mean Temperature'},
+    // Add series property for color distinction (optional).
+    series: {
+      0: {color: 'blue', lineWidth: 1, pointSize: 3},
+      1: {color: 'red', lineWidth: 1, pointSize: 3},
+    }
+  });
+
+print(chart);
+
+
+
+// NCEP data
+var startDate = ee.Date('2020-01-01')
+var endDate = ee.Date('2020-12-31')
+var collection = ee.ImageCollection("NOAA/CFSV2/FOR6H")
+var collection = collection.filterDate('2020-01-01', '2020-12-31')
+
+// Renaming the bands
+function renameBandsETMdswr(image) {
+    var bands = ['Downward_Short-Wave_Radiation_Flux_surface_6_Hour_Average', 'Temperature_height_above_ground', 'Maximum_temperature_height_above_ground_6_Hour_Interval', 'Precipitation_rate_surface_6_Hour_Average'];
+    var new_bands = ['DSWR', 'Temp', 'Tmax', 'PPT'];
+    return image.select(bands).rename(new_bands);
+}
+var collection = collection.map(renameBandsETMdswr)
+// print(collection)
+
+
+
+// 6 hourly to daily
+var numberOfDays = endDate.difference(startDate, 'days')
+var daily1 = ee.ImageCollection(
+  ee.List.sequence(0, numberOfDays.subtract(1))
+    .map(function (dayOffset) {
+      var start = startDate.advance(dayOffset, 'days')
+      var end = start.advance(1, 'days')
+      return collection
+        .filterDate(start, end)
+        .mean()
+        .set('system:time_start', start.millis());
+    })
+);
+
+// Create a time series by summarizing the bands over the region for each image.
+var timeSeries = daily1.map(function(image) {
+  var reducedImage = image.reduceRegion({
+    reducer: ee.Reducer.mean(),
+    geometry: region,
+    scale: null, // Use the original scale of the image.
+  });
+  // Access mean values and formatted date
+  return ee.Feature(null, {
+    'meanTemperature': reducedImage.get('Temp'),
+    'meanMaxTemperature': reducedImage.get('Tmax'),
+    'formattedDate': reducedImage.get('formattedDate', ee.Date(image.get('system:time_start')).format('yyyy-MM-dd HH:mm:ss'))
+  });
+});
+
+print(timeSeries)
+
+// Get the chart from the time series.
+var chart = ui.Chart.feature.byFeature(timeSeries, 'formattedDate', 
+  ['meanTemperature', 'meanMaxTemperature']) // Include both means
+  .setOptions({
+    title: 'Temperature Time Series',
+    xAxis: {title: 'Date & Time'},
+    yAxis: {title: 'Mean Temperature'},
+    // Add series property for color distinction (optional).
+    series: {
+      0: {color: 'blue', lineWidth: 1, pointSize: 3},
+      1: {color: 'red', lineWidth: 1, pointSize: 3},
+    }
+  });
+
+print(chart);

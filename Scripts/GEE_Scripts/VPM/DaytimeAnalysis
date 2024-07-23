@@ -1,0 +1,76 @@
+/**** Start of imports. If edited, may not auto-convert in the playground. ****/
+var geometry = /* color: #98ff00 */ee.Geometry.Point([-91.85744437492286, 34.56788191607573]);
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+// Load the FOR6H dataset from NOAA/CFSV2 collection.
+var dataset = ee.ImageCollection('NOAA/CFSV2/FOR6H')
+  .filter(ee.Filter.date('2018-03-01', '2018-03-05'));
+print(dataset)
+
+// Select the band of interest.
+var radiationFlux = dataset.select('Downward_Short-Wave_Radiation_Flux_surface_6_Hour_Average');
+
+// Get the region you're interested in (replace with your desired region).
+var region = geometry;  // Example point
+
+// Create a time series by summarizing the band over the region for each image.
+var timeSeries = radiationFlux.map(function(image) {
+  var reducedImage = image.reduceRegion({
+    reducer: ee.Reducer.mean(),
+    geometry: region,
+    scale: null, // Use the original scale of the image.
+  });
+  return image.set('Shortwave_Radiation', reducedImage.get('Downward_Short-Wave_Radiation_Flux_surface_6_Hour_Average'))
+             .set('formattedDate', ee.Date(image.get('system:time_start')).format('yyyy-MM-dd HH:mm:ss'));
+});
+
+// Get the chart from the time series.
+var chart = ui.Chart.feature.byFeature(timeSeries, 'formattedDate', ['Shortwave_Radiation'])
+  .setOptions({
+    title: 'Downward Short-Wave Radiation Flux Time Series',
+    xAxis: {title: 'Date & Time'},
+    yAxis: {title: 'Mean Radiation Flux'}
+  });
+
+// Print the chart to the console.
+print(chart);
+
+// Load the FOR6H dataset from NOAA/CFSV2 collection.
+var dataset = ee.ImageCollection('NOAA/CFSV2/FOR6H')
+  .filter(ee.Filter.date('2018-03-01', '2018-03-02'));
+print(dataset)
+// Select the bands of interest.
+var temperature = dataset.select('Temperature_height_above_ground');
+var maxTemperature = dataset.select('Maximum_temperature_height_above_ground_6_Hour_Interval');
+
+// Get the region you're interested in (replace with your desired region).
+var region = geometry; // Example point
+
+// Create a time series by summarizing the bands over the region for each image.
+var timeSeries = dataset.map(function(image) {
+  var reducedImage = image.reduceRegion({
+    reducer: ee.Reducer.mean(),
+    geometry: region,
+    scale: null, // Use the original scale of the image.
+  });
+  // Add mean values for both bands and formatted date-time to the image.
+  var dateFormatted = ee.Date(image.get('system:time_start')).format('yyyy-MM-dd HH:mm:ss');
+  return image.set('meanTemperature', reducedImage.get('Temperature_height_above_ground'))
+             .set('meanMaxTemperature', reducedImage.get('Maximum_temperature_height_above_ground_6_Hour_Interval'))
+             .set('formattedDate', dateFormatted);
+});
+
+// Get the chart from the time series.
+var chart = ui.Chart.feature.byFeature(timeSeries, 'formattedDate', 
+  ['meanTemperature', 'meanMaxTemperature']) // Include both means
+  .setOptions({
+    title: 'Temperature Time Series',
+    xAxis: {title: 'Date & Time'},
+    yAxis: {title: 'Mean Temperature'},
+    // Add series property for color distinction (optional).
+    series: {
+      0: {color: 'blue', lineWidth: 1, pointSize: 3},
+      1: {color: 'red', lineWidth: 1, pointSize: 3},
+    }
+  });
+
+print(chart);

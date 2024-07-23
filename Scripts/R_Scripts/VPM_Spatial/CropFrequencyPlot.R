@@ -22,6 +22,7 @@ library(ggthemes) # theme_map()
 library(RColorBrewer)
 library(magrittr)
 library(ggpointdensity)
+library(exactextractr)
 
 dirCF<- "C:/Users/rbmahbub/Documents/Data/GeospatialData/CumulativeVPM/CropFrequency"
 dirraster <- "C:/Users/rbmahbub/Documents/Data/GeospatialData/CumulativeVPM/CumulativeVPM" ##VPM images
@@ -34,11 +35,20 @@ for (i in 1:6){
     rasterlistCF[i]<-rast(filesCF[i])
 }
 
-### Get the raster images
-# Define file paths for your rasters
+### merge all the shapefiles
+library(sf)
+# Specify the folder path
+folder_path <- "C:/Users/rbmahbub/Documents/Data/GeospatialData/Shapefile/ArkansasRiceClipped/AllMergedTogether"
+# Read the shapefile
+single_shapefile <- st_read(folder_path)
+single_shapefile$GPPaggregate<-exact_extract(stacked_raster_rast_mean, single_shapefile, 'mean')
+single_shapefile$ricegrowingintensity<-exact_extract(rasterlistCF[[4]], single_shapefile, 'mean')
+single_shapefile$clay<-exact_extract(clay_raster, single_shapefile, 'mean')
+single_shapefile$soc<-exact_extract(SOC_raster, single_shapefile, 'mean')
 
-### One raster file to convert the spatial non-temporal data to MODIS projection and upscaling
-### File : stacked_raster_rast_mean from VPMMeanRasterImageAnalysis2008_2020
+
+
+
 stacked_raster_rast_mean
 gppaggregate
 projected_CF<-vector("list", 6)

@@ -1,4 +1,12 @@
 ### ### VPM
+#### Export all the images from google earth engine, the script exports all the images
+#### PD data: C:\Users\rbmahbub\Documents\Data\GeospatialData\CumulativeVPM\PD
+#### PAR data: C:\Users\rbmahbub\Documents\Data\GeospatialData\CumulativeVPM\PAR
+### LSWI data: C:\Users\rbmahbub\Documents\Data\GeospatialData\CumulativeVPM\LSWI
+### EVI data: C:\Users\rbmahbub\Documents\Data\GeospatialData\CumulativeVPM\EVI
+
+
+
 ###Load all the required libraries
 library(raster)
 library(tidyverse)
@@ -24,10 +32,6 @@ library(ggthemes) # theme_map()
 library(RColorBrewer)
 library(magrittr)
 library(ggpointdensity)
-
-### this dataframe comes from another script
-r_multiple_df_pvalue_filtered$x<-as.numeric(r_multiple_df_pvalue_filtered$x)
-r_multiple_df_pvalue_filtered$y<-as.numeric(r_multiple_df_pvalue_filtered$y)
 ## script: VPMMeanRasterImageAnalysis2008_2020.R
 
 # Specify the directory
@@ -69,7 +73,8 @@ for (i in 1:13){
   rasterlistraster[i]<-rast(filesraster[i])
   file_path[i] <- sources(rasterlistraster[[i]])
   year[i] <- as.numeric(sub(".*([0-9]{4})VPMcumulative.*", "\\1", file_path[i])) ### for the VPM images we are changing the name of the bands to year so that it is easy to plot it later
-  rasterlistraster[i]<-setNames(rasterlistraster[[i]], paste0(year[i], "AnnualGPP"))
+  rasterlistraster[[i]] <- setNames(rasterlistraster[[i]], paste0("AnnualGPP", year[i]))
+  
 }
 
 ##Project the raster images on the projection of 
@@ -82,11 +87,11 @@ projected_raster<-vector("list", 13)
 projected_CF<-vector("list", 6)
 
 for (i in 1:13){
-  projected_EVI[i]<- terra::project(rasterlistEVI[[i]], rasterlistraster[[i]], method = "average")
-  projected_LSWI[i]<- terra::project(rasterlistLSWI[[i]], rasterlistraster[[i]], method = "average")
-  projected_PAR[i]<- terra::project(rasterlistPAR[[i]], rasterlistraster[[i]], method = "average")
-  projected_PD[i]<- terra::project(rasterlistPD[[i]], rasterlistraster[[i]], method = "average")
-  projected_Temp[i]<- terra::project(rasterlistTemp[[i]], rasterlistraster[[i]], method = "average")
+  projected_EVI[i] <- terra::project(rasterlistEVI[[i]], rasterlistraster[[i]], method = "average")
+  projected_LSWI[i] <- terra::project(rasterlistLSWI[[i]], rasterlistraster[[i]], method = "average")
+  projected_PAR[i] <- terra::project(rasterlistPAR[[i]], rasterlistraster[[i]], method = "average")
+  projected_PD[i] <- terra::project(rasterlistPD[[i]], rasterlistraster[[i]], method = "average")
+  projected_Temp[i] <- terra::project(rasterlistTemp[[i]], rasterlistraster[[i]], method = "average")
 }
 
 
@@ -125,6 +130,7 @@ for (i in 1:13){
   projected_rasterdflist[[i]] <- terra::as.data.frame(rasterlistraster[[i]], xy=TRUE)
   projected_rasterdflist[[i]] <- filter_by_3sigma(projected_rasterdflist[[i]])
 }
+
 
 ##Convert the raster images to data frames
 projected_cumulativeEVIdflist<-vector("list", 13)
@@ -189,16 +195,18 @@ for (i in 1:13) {
     ylab(expression(paste("Annual Cumulative Gross Primary Productivity (g C ", m^-2, year^-1, ")")))
   
   # Save the plot with a specific filename
-  filename <- paste0("C:/Users/rbmahbub/Documents/RProjects/VPMmodel/VPMmodel/Figures/EVI/EVIGPP_", i, "_", x_col, ".png")
+  filename <- paste0("C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Figure/EVIFigure/EVIFigureEVIGPP_", i, "_", x_col, ".png")
   ggsave(filename, plot, width = 14, height = 8)
 }
+
+
 # Assuming 'i' is an integer column
 regression_metrics_df_EVI <- mutate(regression_metrics_df_EVI,
                                 i = ifelse(i == 1, 2008,
                                            ifelse(i == 13, 2020,
                                                   ifelse(i >= 2 & i <= 12, i + 2007, i))))
 # Export the regression metrics as a table (you can choose the desired format, e.g., CSV)
-write.csv(regression_metrics_df_EVI, "C:/Users/rbmahbub/Documents/RProjects/VPMmodel/VPMmodel/Figures/EVI/regression_metrics_df_EVI.csv", row.names = FALSE)
+write.csv(regression_metrics_df_EVI, "C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Figure/regression_metrics_df_EVI.csv", row.names = FALSE)
 
 
 
@@ -246,7 +254,7 @@ for (i in 1:13) {
     ylab(expression(paste("Annual Cumulative Gross Primary Productivity (g C ", m^-2, year^-1, ")")))
   
   # Save the plot with a specific filename
-  filename <- paste0("C:/Users/rbmahbub/Documents/RProjects/VPMmodel/VPMmodel/Figures/LSWI/LSWIGPP_", i, "_", x_col, ".png")
+  filename <- paste0("C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Figure/LSWIFigure/LSWIGPP_", i, "_", x_col, ".png")
   ggsave(filename, plot, width = 14, height = 8)
 }
 
@@ -257,7 +265,7 @@ regression_metrics_df_LSWI <- mutate(regression_metrics_df_LSWI,
                                                ifelse(i == 13, 2020,
                                                       ifelse(i >= 2 & i <= 12, i + 2007, i))))
 # Export the regression metrics as a table (you can choose the desired format, e.g., CSV)
-write.csv(regression_metrics_df_LSWI, "C:/Users/rbmahbub/Documents/RProjects/VPMmodel/VPMmodel/Figures/LSWI/regression_metrics_df_LSWI.csv", row.names = FALSE)
+write.csv(regression_metrics_df_LSWI, "C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Figure/regression_metrics_df_LSWI.csv", row.names = FALSE)
 
 
 
@@ -305,7 +313,7 @@ for (i in 1:13) {
     ylab(expression(paste("Annual Cumulative Gross Primary Productivity (g C ", m^-2, year^-1, ")")))
   
   # Save the plot with a specific filename
-  filename <- paste0("C:/Users/rbmahbub/Documents/RProjects/VPMmodel/VPMmodel/Figures/PAR/PARGPP_", i, "_", x_col, ".png")
+  filename <- paste0("C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Figure/PARFigure/PARGPP_", i, "_", x_col, ".png")
   ggsave(filename, plot, width = 14, height = 8)
 }
 
@@ -315,7 +323,7 @@ regression_metrics_df_PAR <- mutate(regression_metrics_df_PAR,
                                                 ifelse(i == 13, 2020,
                                                        ifelse(i >= 2 & i <= 12, i + 2007, i))))
 # Export the regression metrics as a table (you can choose the desired format, e.g., CSV)
-write.csv(regression_metrics_df_PAR, "C:/Users/rbmahbub/Documents/RProjects/VPMmodel/VPMmodel/Figures/PAR/regression_metrics_df_PAR.csv", row.names = FALSE)
+write.csv(regression_metrics_df_PAR, "C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Figure/regression_metrics_df_PAR.csv", row.names = FALSE)
 
 
 ###Temp
@@ -361,7 +369,7 @@ for (i in 1:13) {
     ylab(expression(paste("Annual Cumulative Gross Primary Productivity (g C ", m^-2, year^-1, ")")))
   
   # Save the plot with a specific filename
-  filename <- paste0("C:/Users/rbmahbub/Documents/RProjects/VPMmodel/VPMmodel/Figures/Temp/TempGPP_", i, "_", x_col, ".png")
+  filename <- paste0("C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Figure/TemperatureFigure/TempGPP_", i, "_", x_col, ".png")
   ggsave(filename, plot, width = 14, height = 8)
 }
 
@@ -372,7 +380,7 @@ regression_metrics_df_Temp <- mutate(regression_metrics_df_Temp,
                                                ifelse(i == 13, 2020,
                                                       ifelse(i >= 2 & i <= 12, i + 2007, i))))
 # Export the regression metrics as a table (you can choose the desired format, e.g., CSV)
-write.csv(regression_metrics_df_Temp, "C:/Users/rbmahbub/Documents/RProjects/VPMmodel/VPMmodel/Figures/Temp/regression_metrics_df_Temp.csv", row.names = FALSE)
+write.csv(regression_metrics_df_Temp, "C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Figure/regression_metrics_df_Temp.csv", row.names = FALSE)
 
 
 
@@ -420,7 +428,7 @@ for (i in 1:13) {
     ylab(expression(paste("Annual Cumulative Gross Primary Productivity (g C ", m^-2, year^-1, ")")))
   
   # Save the plot with a specific filename
-  filename <- paste0("C:/Users/rbmahbub/Documents/RProjects/VPMmodel/VPMmodel/Figures/PD/PDGPP_", i, "_", x_col, ".png")
+  filename <- paste0("C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Figure/PDFigure/PDGPP_", i, "_", x_col, ".png")
   ggsave(filename, plot, width = 14, height = 8)
 }
 # Assuming 'i' is an integer column
@@ -429,11 +437,189 @@ regression_metrics_df_PD <- mutate(regression_metrics_df_PD,
                                                ifelse(i == 13, 2020,
                                                       ifelse(i >= 2 & i <= 12, i + 2007, i))))
 # Export the regression metrics as a table (you can choose the desired format, e.g., CSV)
-write.csv(regression_metrics_df_PD, "C:/Users/rbmahbub/Documents/RProjects/VPMmodel/VPMmodel/Figures/PD/regression_metrics_df_PD.csv", row.names = FALSE)
+write.csv(regression_metrics_df_PD, "C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Figure/regression_metrics_df_PD.csv", row.names = FALSE)
+
+###############################################################
+###############################################################
+###############################################################
+###############################################################
+projected_cumulativeEVIdflistyear<-projected_cumulativeEVIdflist
+projected_cumulativeLSWIdflistyear<-projected_cumulativeLSWIdflist
+projected_cumulativepardflistyear<-projected_cumulativePARdflist
+projected_cumulativeTempdflistyear<-projected_cumulativeTempdflist
+for (i in 1:13) {
+  projected_cumulativeEVIdflistyear[[i]]$year <- 2007 + i
+  projected_cumulativeLSWIdflistyear[[i]]$year <- 2007 + i
+  projected_cumulativepardflistyear[[i]]$year <- 2007 + i
+  projected_cumulativeTempdflistyear[[i]]$year <- 2007 + i# Calculate year based on position in list
+}
 
 
+# Iterate through the DataFrames
+for (i in 1:13) {
+  # Rename columns to remove leading digits
+  names(projected_cumulativeEVIdflistyear[[i]]) <- sub("^\\d{4}", "", names(projected_cumulativeEVIdflistyear[[i]]))
+  names(projected_cumulativeLSWIdflistyear[[i]]) <- sub("^\\d{4}", "", names(projected_cumulativeLSWIdflistyear[[i]]))
+  names(projected_cumulativepardflistyear[[i]]) <- sub("^\\d{4}", "", names(projected_cumulativepardflistyear[[i]]))
+  names(projected_cumulativeTempdflistyear[[i]]) <- sub("^\\d{4}", "", names(projected_cumulativeTempdflistyear[[i]]))
+  
+  # Bind rows to the merged DataFrame
+  merged_df_EVIGPP <- bind_rows(merged_df_EVIGPP, projected_cumulativeEVIdflistyear[[i]])
+  merged_df_LSWIGPP <- bind_rows(merged_df_LSWIGPP, projected_cumulativeLSWIdflistyear[[i]])
+  merged_df_PARGPP <- bind_rows(merged_df_PARGPP, projected_cumulativepardflistyear[[i]])
+  merged_df_TempGPP <- bind_rows(merged_df_TempGPP, projected_cumulativeTempdflistyear[[i]])
+  
+}
+
+mergedEVILSWIPARGPP<-cbind(merged_df_EVIGPP, merged_df_LSWIGPP, merged_df_PARGPP, merged_df_TempGPP)
+View(mergedEVILSWIPARGPP)
+columns_to_select <- c("x", "y", "AnnualGPP", "year", "EVI_SG_mean", "LSWI_SG_mean", "par_mean", "tmean_mean")
+mergedEVILSWIPARGPP <- mergedEVILSWIPARGPP[, columns_to_select]
+write.csv(mergedEVILSWIPARGPP, file = file.path('C:\\Users\\rbmahbub\\Documents\\RProjects\\VPMmodel\\VPMmodel\\Figures', 'mergedEVILSWIPARGPP.csv'), row.names = FALSE)
+mergedEVILSWIPARGPP <- read.csv('C:\\Users\\rbmahbub\\Documents\\RProjects\\VPMmodel\\VPMmodel\\Figures\\mergedEVILSWIPARGPP.csv')
+
+### Get rid of the values of EVI that are greater than 1 
+mergedEVILSWIPARGPP <- mergedEVILSWIPARGPP[mergedEVILSWIPARGPP$EVI_SG_mean <= 1, ]
+mergedEVILSWIPARGPP <- na.omit(mergedEVILSWIPARGPP)
+#mergedEVILSWIPARGPP <- head(mergedEVILSWIPARGPP, 1000)
 
 
+#############EVI###########################
+evi<-ggscatter(mergedEVILSWIPARGPP, x = "EVI_SG_mean", y = "AnnualGPP", size =0)+
+  stat_cor(
+    aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
+    label.x = 0.1, label.y = 3000, size = 8) +
+  stat_regline_equation(label.x = 0.1, label.y = 2800, size = 8) +
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 3200)) +
+  xlab(paste0("Annual Mean EVI")) +
+  geom_bin2d(bins = 150) +
+  scale_fill_continuous(type = "viridis") +
+  geom_smooth(method="lm", size = 3, se=FALSE,)+
+  theme_bw()+
+  font("xy.text", size = 24) +
+  font("xlab", size = 24) +
+  font("ylab", size = 24) +
+  ylab(expression(paste("Annual Cumulative GPP (g C ", m^-2, year^-1, ")")))+
+  theme(legend.title = element_text(size = 20), legend.text = element_text(size = 20)
+        ,legend.key.size = unit(1.5, "cm")) +
+  guides(fill = guide_colorbar(title = "Count", label.theme = element_text(size = 20)))
+
+ggsave(filename = "C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Figure/EVIFigure/EVI_SG_mean_vs_AnnualGPP_byCount.png",  # Customize filename and format
+       plot = last_plot(),    # Ensure we save the last generated plot
+       width = 10,           # Adjust width and height as needed
+       height = 7)
+
+###LSWI
+lswi<-ggscatter(mergedEVILSWIPARGPP, x = "LSWI_SG_mean", y = "AnnualGPP", size =0)+
+  stat_cor(
+    aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
+    label.x = -0.1, label.y = 3000, size = 8) +
+  stat_regline_equation(label.x = -0.1, label.y = 2800, size = 8) +
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 3200)) +
+  xlab(paste0("Annual Mean LSWI")) +
+  geom_bin2d(bins = 150) +
+  scale_fill_continuous(type = "viridis") +
+  geom_smooth(method="lm", size = 3, se=FALSE,)+
+  theme_bw()+
+  font("xy.text", size = 24) +
+  font("xlab", size = 24) +
+  font("ylab", size = 24) +
+  ylab(expression(paste("Annual Cumulative GPP (g C ", m^-2, year^-1, ")")))+
+  theme(legend.title = element_text(size = 20), legend.text = element_text(size = 20)
+        ,legend.key.size = unit(1.5, "cm")) +
+  guides(fill = guide_colorbar(title = "Count", label.theme = element_text(size = 20)))
+
+ggsave(filename = "C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Figure/LSWIFigure/LSWI_SG_mean_vs_AnnualGPP_byCount.png",  # Customize filename and format
+       plot = last_plot(),    # Ensure we save the last generated plot
+       width = 10,           # Adjust width and height as needed
+       height = 7)
+
+###PAR
+par<-ggscatter(mergedEVILSWIPARGPP, x = "par_mean", y = "AnnualGPP", size =0)+
+  stat_cor(
+    aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
+    label.x = 28, label.y = 3100, size = 8) +
+  stat_regline_equation(label.x = 28, label.y = 2900, size = 8) +
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 3300)) +
+  xlab(paste0("Annual Mean PAR")) +
+  geom_bin2d(bins = 150) +
+  scale_fill_continuous(type = "viridis") +
+  geom_smooth(method="lm", size = 3, se=FALSE,)+
+  theme_bw()+
+  font("xy.text", size = 24) +
+  font("xlab", size = 24) +
+  font("ylab", size = 24) +
+  ylab(expression(paste("Annual Cumulative GPP (g C ", m^-2, year^-1, ")")))+
+  theme(legend.title = element_text(size = 20), legend.text = element_text(size = 20)
+        ,legend.key.size = unit(1.5, "cm")) +
+  guides(fill = guide_colorbar(title = "Count", label.theme = element_text(size = 20)))
+
+ggsave(filename = "C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Figure/PARFigure/PAR_SG_mean_vs_AnnualGPP_by_Year.png",  # Customize filename and format
+       plot = last_plot(),    # Ensure we save the last generated plot
+       width = 10,           # Adjust width and height as needed
+       height = 7)
+
+### Temperature
+temp<-ggscatter(mergedEVILSWIPARGPP, x = "tmean_mean", y = "AnnualGPP", size =0)+
+  stat_cor(
+    aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
+    label.x = 16.5, label.y = 3000, size = 8) +
+  stat_regline_equation(label.x = 16.5, label.y = 2800, size = 8) +
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 3200)) +
+  xlab(paste0("Annual Mean Temperature")) +
+  geom_bin2d(bins = 150) +
+  scale_fill_continuous(type = "viridis") +
+  geom_smooth(method="lm", size = 3, se=FALSE,)+
+  theme_bw()+
+  font("xy.text", size = 24) +
+  font("xlab", size = 24) +
+  font("ylab", size = 24) +
+  ylab(expression(paste("Annual Cumulative GPP (g C ", m^-2, year^-1, ")")))+
+  theme(legend.title = element_text(size = 20), legend.text = element_text(size = 20)
+        ,legend.key.size = unit(1.5, "cm")) +
+  guides(fill = guide_colorbar(title = "Count", label.theme = element_text(size = 20)))
+temp
+
+ggsave(filename = "C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Figure/TemperatureFigure/Temp_SG_mean_vs_AnnualGPP_by_Year.png",  # Customize filename and format
+       plot = last_plot(),    # Ensure we save the last generated plot
+       width = 10,           # Adjust width and height as needed
+       height = 7)
+
+ggarrange(evi, lswi, par, temp , 
+          labels = c("A", "B", "C", "D"),
+          font.label = list(size = 24, color = "black", face = "bold", family = NULL),
+          ncol = 2, nrow = 2)
+ggsave(filename = "C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Figure/EVIPARTEMPGPPLSWIarrange.png",  # Customize filename and format
+       plot = last_plot(),    # Ensure we save the last generated plot
+       width = 25,           # Adjust width and height as needed
+       height = 20)          # Adjust width and height as needed
+
+# Your ggarrange code
+arranged_plot <- ggarrange(evi, lswi, par, temp + rremove("x.text"),
+                           labels = c("A", "B", "C", "D"),
+                           
+                           ncol = 2, nrow = 2)
+# Increase font size and place labels on the right
+final_plot <- plot_grid(
+  arranged_plot,
+  labels = c("A", "B", "C", "D"),
+  label_size = 24,
+  align = "v",
+  hjust = 1
+)
+# Display the final_plot
+final_plot
+ggsave(filename = "C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Figure/EVIPARTEMPGPPLSWIfinalplot.png",  # Customize filename and format
+       plot = last_plot(),    # Ensure we save the last generated plot
+       width = 22,           # Adjust width and height as needed
+       height = 16)          # Adjust width and height as needed
+
+
+# Initialize an empty DataFrame
+merged_df_EVIGPP <- data.frame()
+merged_df_LSWIGPP <- data.frame()
+merged_df_PARGPP <- data.frame()
+merged_df_TempGPP <- data.frame()
 #### high and low region analysis
 # Initialize an empty DataFrame to store the merged results
 ###naming for (i in 1:length(projected_EVIdflist)) {
@@ -511,28 +697,28 @@ calculate_slope_pvalue <- function(row) {
 # Apply the function to each row and add as new columns
 merged_df_df_slope <- merged_df_df %>%
   rowwise() %>%
-  mutate(slope = calculate_slope_pvalue(c_across(all_of(columns_to_check)))[1],
+  dplyr::mutate(slope = calculate_slope_pvalue(c_across(all_of(columns_to_check)))[1],
          p_value = calculate_slope_pvalue(c_across(all_of(columns_to_check)))[2])
 merged_df_df_EVI_slope <- merged_df_df_EVI %>%
   rowwise() %>%
-  mutate(slopeEVI = calculate_slope_pvalue(c_across(all_of(columns_to_checkEVI)))[1],
+  dplyr::mutate(slopeEVI = calculate_slope_pvalue(c_across(all_of(columns_to_checkEVI)))[1],
          p_valueEVI = calculate_slope_pvalue(c_across(all_of(columns_to_checkEVI)))[2])
 
 merged_df_df_LSWI_slope <- merged_df_df_LSWI %>%
   rowwise() %>%
-  mutate(slopeLSWI = calculate_slope_pvalue(c_across(all_of(columns_to_checkLSWI)))[1],
+  dplyr::mutate(slopeLSWI = calculate_slope_pvalue(c_across(all_of(columns_to_checkLSWI)))[1],
          p_valueLSWI = calculate_slope_pvalue(c_across(all_of(columns_to_checkLSWI)))[2])
 merged_df_df_PAR_slope <- merged_df_df_PAR %>%
   rowwise() %>%
-  mutate(slopePAR = calculate_slope_pvalue(c_across(all_of(columns_to_checkPAR)))[1],
+  dplyr::mutate(slopePAR = calculate_slope_pvalue(c_across(all_of(columns_to_checkPAR)))[1],
          p_valuePAR = calculate_slope_pvalue(c_across(all_of(columns_to_checkPAR)))[2])
 merged_df_df_Temp_slope <- merged_df_df_Temp %>%
   rowwise() %>%
-  mutate(slopeTemp = calculate_slope_pvalue(c_across(all_of(columns_to_checkTemp)))[1],
+  dplyr::mutate(slopeTemp = calculate_slope_pvalue(c_across(all_of(columns_to_checkTemp)))[1],
          p_valueTemp = calculate_slope_pvalue(c_across(all_of(columns_to_checkTemp)))[2])
 merged_df_df_PD_slope <- merged_df_df_PD %>%
   rowwise() %>%
-  mutate(slopePD = calculate_slope_pvalue(c_across(all_of(columns_to_checkPD)))[1],
+  dplyr::mutate(slopePD = calculate_slope_pvalue(c_across(all_of(columns_to_checkPD)))[1],
          p_valuePD = calculate_slope_pvalue(c_across(all_of(columns_to_checkPD)))[2])
 
 
@@ -769,94 +955,4 @@ merged_df_EVIGPP <- data.frame()
 merged_df_LSWIGPP<-data.frame()
 merged_df_parGPP<-data.frame()
 merged_df_Temp<-data.frame()
-projected_cumulativeEVIdflistyear<-projected_cumulativeEVIdflist
-projected_cumulativeLSWIdflistyear<-projected_cumulativeLSWIdflist
-projected_cumulativepardflistyear<-projected_cumulativePARdflist
-projected_cumulativeTempdflistyear<-projected_cumulativeTempdflist
-
-
-
-
-for (i in 1:13) {
-  projected_cumulativeEVIdflistyear[[i]]$year <- 2007 + i
-  projected_cumulativeLSWIdflistyear[[i]]$year <- 2007 + i
-  projected_cumulativepardflistyear[[i]]$year <- 2007 + i
-  projected_cumulativeTempdflistyear[[i]]$year <- 2007 + i# Calculate year based on position in list
-}
-# Initialize an empty DataFrame
-merged_df_EVIGPP <- data.frame()
-merged_df_LSWIGPP <- data.frame()
-merged_df_PARGPP <- data.frame()
-merged_df_TempGPP <- data.frame()
-# Iterate through the DataFrames
-for (i in 1:13) {
-  # Rename columns to remove leading digits
-  names(projected_cumulativeEVIdflistyear[[i]]) <- sub("^\\d{4}", "", names(projected_cumulativeEVIdflistyear[[i]]))
-  names(projected_cumulativeLSWIdflistyear[[i]]) <- sub("^\\d{4}", "", names(projected_cumulativeLSWIdflistyear[[i]]))
-  names(projected_cumulativepardflistyear[[i]]) <- sub("^\\d{4}", "", names(projected_cumulativepardflistyear[[i]]))
-  names(projected_cumulativeTempdflistyear[[i]]) <- sub("^\\d{4}", "", names(projected_cumulativeTempdflistyear[[i]]))
-  
-  # Bind rows to the merged DataFrame
-  merged_df_EVIGPP <- bind_rows(merged_df_EVIGPP, projected_cumulativeEVIdflistyear[[i]])
-  merged_df_LSWIGPP <- bind_rows(merged_df_LSWIGPP, projected_cumulativeLSWIdflistyear[[i]])
-  merged_df_PARGPP <- bind_rows(merged_df_PARGPP, projected_cumulativepardflistyear[[i]])
-  merged_df_TempGPP <- bind_rows(merged_df_TempGPP, projected_cumulativeTempdflistyear[[i]])
-  
-}
-
-### Get rid of the values of EVI that are greater than 1 
-merged_df_EVIGPP <- merged_df_EVIGPP[merged_df_EVIGPP$EVI_SG_mean <= 1, ]
-filtered_merged_df_EVIGPP <- na.omit(merged_df_EVIGPP)
-ggplot(filtered_merged_df_EVIGPP, aes(x = EVI_SG_mean, y = AnnualGPP, color = year)) +
-  geom_point(alpha = 0.1) +  # Set opacity to 0.7 (adjust as needed)
-  labs(x = "Annual Mean EVI", y = "Annual Cumulative GPP", color = "Year") +
-  scale_color_viridis() +  # Keep viridis color palette
-  theme_classic()
-
-ggsave(filename = "C:/Users/rbmahbub/Documents/RProjects/VPMmodel/VPMmodel/Figures/EVI/EVI_SG_mean_vs_AnnualGPP_by_Year.png",  # Customize filename and format
-       plot = last_plot(),    # Ensure we save the last generated plot
-       width = 10,           # Adjust width and height as needed
-       height = 7)
-
-###LSWI
-ggplot(merged_df_LSWIGPP, aes(x = LSWI_SG_mean, y = AnnualGPP, color = year)) +
-  geom_point(alpha = 0.1) +  # Set opacity to 0.7 (adjust as needed)
-  labs(
-       x = "Annual Mean LSWI", y = "Annual Cumulative GPP", color = "Year") +
-  scale_color_viridis() +  # Keep viridis color palette
-  theme_classic()
-
-ggsave(filename = "C:/Users/rbmahbub/Documents/RProjects/VPMmodel/VPMmodel/Figures/LSWI/LSWI_SG_mean_vs_AnnualGPP_by_Year.png",  # Customize filename and format
-       plot = last_plot(),    # Ensure we save the last generated plot
-       width = 10,           # Adjust width and height as needed
-       height = 7)
-
-###PAR
-ggplot(merged_df_PARGPP, aes(x = par_mean, y = AnnualGPP, color = year)) +
-  geom_point(alpha = 0.1) +  # Set opacity to 0.7 (adjust as needed)
-  labs(
-    x = "Annual Mean Photosynthetic Active Radiation", y = "Annual Cumulative GPP", color = "Year") +
-  scale_color_viridis() +  # Keep viridis color palette
-  theme_classic()
-
-ggsave(filename = "C:/Users/rbmahbub/Documents/RProjects/VPMmodel/VPMmodel/Figures/PAR/PAR_SG_mean_vs_AnnualGPP_by_Year.png",  # Customize filename and format
-       plot = last_plot(),    # Ensure we save the last generated plot
-       width = 10,           # Adjust width and height as needed
-       height = 7)
-
-
-### Temperature
-ggplot(merged_df_TempGPP, aes(x = tmean_mean, y = AnnualGPP, color = year)) +
-  geom_point(alpha = 0.1) +  # Set opacity to 0.7 (adjust as needed)
-  labs(
-    x = "Annual Mean Temperature", y = "Annual Cumulative GPP", color = "Year") +
-  scale_color_viridis() +  # Keep viridis color palette
-  theme_classic()
-
-ggsave(filename = "C:/Users/rbmahbub/Documents/RProjects/VPMmodel/VPMmodel/Figures/Temp/Temp_SG_mean_vs_AnnualGPP_by_Year.png",  # Customize filename and format
-       plot = last_plot(),    # Ensure we save the last generated plot
-       width = 10,           # Adjust width and height as needed
-       height = 7)
-
-
 
