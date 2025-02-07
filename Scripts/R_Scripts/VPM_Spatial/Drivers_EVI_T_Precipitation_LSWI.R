@@ -40,7 +40,8 @@ dirLSWI <- "C:/Users/rbmahbub/Documents/Data/GeospatialData/CumulativeVPM/LSWI" 
 dirPAR <- "C:/Users/rbmahbub/Documents/Data/GeospatialData/CumulativeVPM/PAR" ## PAR
 dirTemp <- "C:/Users/rbmahbub/Documents/Data/GeospatialData/CumulativeVPM/Temperature/MeanTemperature" ## Temperature
 dirPD<- "C:/Users/rbmahbub/Documents/Data/GeospatialData/CumulativeVPM/PD"
-dirraster <- "C:/Users/rbmahbub/Documents/Data/GeospatialData/CumulativeVPM/CumulativeVPM" ##VPM images
+#dirraster <- "C:/Users/rbmahbub/Documents/Data/GeospatialData/CumulativeVPM/CumulativeVPM" ##VPM images at 100 coverage
+dirraster <- "C:/Users/rbmahbub/Documents/Data/GeospatialData/CumulativeVPM/CumulativeVPMRasterPolygonCoverageFilter" ##VPM images at 100 coverage
 dirCF<- "C:/Users/rbmahbub/Documents/Data/GeospatialData/CumulativeVPM/CropFrequency"
 
 
@@ -443,6 +444,13 @@ write.csv(regression_metrics_df_PD, "C:/Users/rbmahbub/Documents/RProjects/VPM_S
 ###############################################################
 ###############################################################
 ###############################################################
+#### Plot EVI and GPP all years into one graph
+# Initialize an empty DataFrame
+merged_df_EVIGPP <- data.frame()
+merged_df_LSWIGPP<-data.frame()
+merged_df_PARGPP<-data.frame()
+merged_df_TempGPP<-data.frame()
+
 projected_cumulativeEVIdflistyear<-projected_cumulativeEVIdflist
 projected_cumulativeLSWIdflistyear<-projected_cumulativeLSWIdflist
 projected_cumulativepardflistyear<-projected_cumulativePARdflist
@@ -455,21 +463,22 @@ for (i in 1:13) {
 }
 
 
-# Iterate through the DataFrames
 for (i in 1:13) {
-  # Rename columns to remove leading digits
-  names(projected_cumulativeEVIdflistyear[[i]]) <- sub("^\\d{4}", "", names(projected_cumulativeEVIdflistyear[[i]]))
-  names(projected_cumulativeLSWIdflistyear[[i]]) <- sub("^\\d{4}", "", names(projected_cumulativeLSWIdflistyear[[i]]))
-  names(projected_cumulativepardflistyear[[i]]) <- sub("^\\d{4}", "", names(projected_cumulativepardflistyear[[i]]))
-  names(projected_cumulativeTempdflistyear[[i]]) <- sub("^\\d{4}", "", names(projected_cumulativeTempdflistyear[[i]]))
+  # Rename columns to remove trailing digits
+  names(projected_cumulativeEVIdflistyear[[i]]) <- sub("\\d{4}$", "", names(projected_cumulativeEVIdflistyear[[i]]))
+  names(projected_cumulativeLSWIdflistyear[[i]]) <- sub("\\d{4}$", "", names(projected_cumulativeLSWIdflistyear[[i]]))
+  names(projected_cumulativepardflistyear[[i]]) <- sub("\\d{4}$", "", names(projected_cumulativepardflistyear[[i]]))
+  names(projected_cumulativeTempdflistyear[[i]]) <- sub("\\d{4}$", "", names(projected_cumulativeTempdflistyear[[i]]))
   
   # Bind rows to the merged DataFrame
   merged_df_EVIGPP <- bind_rows(merged_df_EVIGPP, projected_cumulativeEVIdflistyear[[i]])
   merged_df_LSWIGPP <- bind_rows(merged_df_LSWIGPP, projected_cumulativeLSWIdflistyear[[i]])
   merged_df_PARGPP <- bind_rows(merged_df_PARGPP, projected_cumulativepardflistyear[[i]])
   merged_df_TempGPP <- bind_rows(merged_df_TempGPP, projected_cumulativeTempdflistyear[[i]])
-  
 }
+
+
+
 
 mergedEVILSWIPARGPP<-cbind(merged_df_EVIGPP, merged_df_LSWIGPP, merged_df_PARGPP, merged_df_TempGPP)
 View(mergedEVILSWIPARGPP)
@@ -488,9 +497,9 @@ mergedEVILSWIPARGPP <- na.omit(mergedEVILSWIPARGPP)
 evi<-ggscatter(mergedEVILSWIPARGPP, x = "EVI_SG_mean", y = "AnnualGPP", size =0)+
   stat_cor(
     aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
-    label.x = 0.1, label.y = 3000, size = 8) +
+    p.accuracy = 0.001, label.x = 0.1, label.y = 3000, size = 8) +
   stat_regline_equation(label.x = 0.1, label.y = 2800, size = 8) +
-  scale_y_continuous(expand = c(0, 0), limits = c(0, 3200)) +
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 3500)) +
   xlab(paste0("Annual Mean EVI")) +
   geom_bin2d(bins = 150) +
   scale_fill_continuous(type = "viridis") +
@@ -513,9 +522,9 @@ ggsave(filename = "C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Figure/EVIF
 lswi<-ggscatter(mergedEVILSWIPARGPP, x = "LSWI_SG_mean", y = "AnnualGPP", size =0)+
   stat_cor(
     aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
-    label.x = -0.1, label.y = 3000, size = 8) +
-  stat_regline_equation(label.x = -0.1, label.y = 2800, size = 8) +
-  scale_y_continuous(expand = c(0, 0), limits = c(0, 3200)) +
+    p.accuracy = 0.001, label.x = -0.1, label.y = 3400, size = 8) +
+  stat_regline_equation(label.x = -0.1, label.y = 3200, size = 8) +
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 3500)) +
   xlab(paste0("Annual Mean LSWI")) +
   geom_bin2d(bins = 150) +
   scale_fill_continuous(type = "viridis") +
@@ -538,9 +547,9 @@ ggsave(filename = "C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Figure/LSWI
 par<-ggscatter(mergedEVILSWIPARGPP, x = "par_mean", y = "AnnualGPP", size =0)+
   stat_cor(
     aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
-    label.x = 28, label.y = 3100, size = 8) +
-  stat_regline_equation(label.x = 28, label.y = 2900, size = 8) +
-  scale_y_continuous(expand = c(0, 0), limits = c(0, 3300)) +
+    p.accuracy = 0.001, label.x = 27, label.y = 3400, size = 8) +
+  stat_regline_equation(label.x = 27, label.y = 3200, size = 8) +
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 3500)) +
   xlab(paste0("Annual Mean PAR")) +
   geom_bin2d(bins = 150) +
   scale_fill_continuous(type = "viridis") +
@@ -563,9 +572,9 @@ ggsave(filename = "C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Figure/PARF
 temp<-ggscatter(mergedEVILSWIPARGPP, x = "tmean_mean", y = "AnnualGPP", size =0)+
   stat_cor(
     aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
-    label.x = 16.5, label.y = 3000, size = 8) +
-  stat_regline_equation(label.x = 16.5, label.y = 2800, size = 8) +
-  scale_y_continuous(expand = c(0, 0), limits = c(0, 3200)) +
+    p.accuracy = 0.001, label.x = 15.5, label.y = 3400, size = 8) +
+  stat_regline_equation(label.x = 15.5, label.y = 3200, size = 8) +
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 3500)) +
   xlab(paste0("Annual Mean Temperature")) +
   geom_bin2d(bins = 150) +
   scale_fill_continuous(type = "viridis") +

@@ -26,8 +26,9 @@ library(exactextractr)
 library(base)
 library("plot3D")
 
-#### GPP
-raster_dir <- "C:/Users/rbmahbub/Documents/Data/GeospatialData/CumulativeVPM/CumulativeVPM"
+##GPP
+#raster_dir <- "C:/Users/rbmahbub/Documents/Data/GeospatialData/CumulativeVPM/CumulativeVPM" ##VPM images at 100 coverage
+raster_dir <- "C:/Users/rbmahbub/Documents/Data/GeospatialData/CumulativeVPM/CumulativeVPMRasterPolygonCoverageFilter" ##VPM images at 50 coverage
 rastlist <- list.files(path = raster_dir, pattern='.tif$', 
                        all.files=TRUE, full.names=FALSE)
 ME2 <- st_read("C:/Users/rbmahbub/Documents/Data/GeospatialData/CumulativeVPM/ME_Shapefile/ME.shp")
@@ -57,7 +58,8 @@ clay_raster_meanb30<-mean(clay_raster$b0, clay_raster$b10, clay_raster$b30)
 
 #####CROP FREQUENCY################
 dirCF<- "C:/Users/rbmahbub/Documents/Data/GeospatialData/CumulativeVPM/CropFrequency"
-dirraster <- "C:/Users/rbmahbub/Documents/Data/GeospatialData/CumulativeVPM/CumulativeVPM" ##VPM images
+#dirraster <- "C:/Users/rbmahbub/Documents/Data/GeospatialData/CumulativeVPM/CumulativeVPM" ##VPM images
+dirraster <- "C:/Users/rbmahbub/Documents/Data/GeospatialData/CumulativeVPM/CumulativeVPMRasterPolygonCoverageFilter" ##VPM images at 50 coverage
 
 filesCF<- list.files(dirCF, pattern = "\\.tif$", full.names = TRUE)
 filesraster <- list.files(dirraster, pattern = "\\.tif$", full.names = TRUE)
@@ -108,6 +110,9 @@ stacked_raster_rastEVI_500<-terra::project(stacked_raster_rast_meanEVI, stacked_
 stacked_raster_rastLSWI_500<-terra::project(stacked_raster_rast_meanLSWI, stacked_raster_rast_mean_500)
 stacked_raster_rastCF_500<-terra::project(ar_rice, stacked_raster_rast_mean_500)
 
+ar_rice_wgs84 <- terra::project(stacked_raster_rastCF_500, crs(stacked_raster_rast_meanLSWI))
+EVI_wgs84 <- terra::project(stacked_raster_rastEVI_500, crs(stacked_raster_rast_meanLSWI))
+
 
 stacked_raster_rast_mean_500df<-as.data.frame(stacked_raster_rast_mean_500, xy=TRUE)
 clay_raster_meanb30_500df<-as.data.frame(clay_raster_meanb30_500, xy=TRUE)
@@ -142,6 +147,9 @@ filtered_df <- single_shapefiledf[single_shapefiledf$mean >= lower_bound &
 write.csv(filtered_df, file = "C:/Users/rbmahbub/Documents/RProjects/VPMmodel/VPMmodel/Data/ExportedData/GPP500sdfilteredrgfclayevilswi.csv", row.names = FALSE)
 # Read the CSV file into a dataframe
 GPP500sdfilteredrgfclayevilswi <- read.csv("C:/Users/rbmahbub/Documents/RProjects/VPMmodel/VPMmodel/Data/ExportedData/GPP500sdfilteredrgfclayevilswi.csv")
+### not filtering data
+#GPP500sdfilteredrgfclayevilswi <-single_shapefiledf
+
 GPP500sdfilteredrgfclayevilswi$GPPggrg_8<-GPP500sdfilteredrgfclayevilswi$mean * 8
 # Remove rows where 'ar_rice' is equal to 0
 GPP500sdfilteredrgfclayevilswi <- GPP500sdfilteredrgfclayevilswi[GPP500sdfilteredrgfclayevilswi$ar_rice != 0, ]
@@ -157,7 +165,7 @@ grgpp<-ggscatter(GPP500sdfilteredrgfclayevilswi, x = "ar_rice", y = "GPPggrg_8",
     label.x = 7, label.y = 500, size = 8, p.accuracy = 0.001) +
   stat_regline_equation(label.x = 7, label.y = 250, size = 8) +
   scale_y_continuous(expand = c(0, 0), limits = c(0, 3200)) +
-  scale_x_continuous(breaks = c(0, 2, 5, 7, 10)) + 
+  scale_x_continuous(breaks = c(0, 2, 4, 6, 8, 10, 13)) + 
   xlab(paste0("Rice Growing Frequency (season)")) +
   geom_bin2d(bins = 150) +
   scale_fill_continuous(type = "viridis") +
@@ -187,18 +195,18 @@ EVIdataframe<-as.data.frame(EVIdataframe)
 GPPdataframe<-as.data.frame(GPPdataframe)
 EVIdataframe$geometry<-(single_shapefiledf$geometry)
 GPPdataframe$geometry<-(single_shapefiledf$geometry)
-GPPdataframe$rcgrwng <-single_shapefiledf$rcgrwng
-EVIdataframe$rcgrwng <-single_shapefiledf$rcgrwng
+GPPdataframe$rcgrwng <-single_shapefiledf$rcgrwng  #### sometimes it is ar_rice have to figure it out
+EVIdataframe$rcgrwng <-single_shapefiledf$rcgrwng  #### sometimes it is ar_rice have to figure it out
 
 columns_to_EVI <- c( "mean.EVI_SG_mean.1", "mean.EVI_SG_mean.2" , "mean.EVI_SG_mean.3", 
                      "mean.EVI_SG_mean.4","mean.EVI_SG_mean.5" , "mean.EVI_SG_mean.6" ,
                      "mean.EVI_SG_mean.7", "mean.EVI_SG_mean.8" , "mean.EVI_SG_mean.9", 
                      "mean.EVI_SG_mean.10","mean.EVI_SG_mean.11", "mean.EVI_SG_mean.12",
                      "mean.EVI_SG_mean.13")
-columns_to_GPP <- c( "mean.gpp_sum.1",  "mean.gpp_sum.2"  ,"mean.gpp_sum.3",  "mean.gpp_sum.4" ,
-                     "mean.gpp_sum.5",  "mean.gpp_sum.6"  ,"mean.gpp_sum.7",  "mean.gpp_sum.8" ,
-                     "mean.gpp_sum.9" , "mean.gpp_sum.10", "mean.gpp_sum.11", "mean.gpp_sum.12",
-                     "mean.gpp_sum.13")
+columns_to_GPP <- c( "mean.value.1",  "mean.value.2"  ,"mean.value.3",  "mean.value.4" ,
+                     "mean.value.5",  "mean.value.6"  ,"mean.value.7",  "mean.value.8" ,
+                     "mean.value.9" , "mean.value.10", "mean.value.11", "mean.value.12",
+                     "mean.value.13")
 
 # Remove rows where at least 11 columns have NA values
 EVIdataframehl <- filter(EVIdataframe, rcgrwng >5)
@@ -235,7 +243,8 @@ merged_data <- left_join(GPPdataframehl_slope_pvalue, EVIdataframehl_slope, by =
 hist(merged_data$rcgrwng.y) 
 
 
-
+################################
+#######################################
 # Read the shapefile using st_read
 single_shapefile <- st_read("C:/Users/rbmahbub/Documents/Data/GeospatialData/Shapefile/SingleShapefileAllDriver/SingleShapefileAlldataframes.shp")
 single_shapefiledf<-as.data.frame(single_shapefile)
@@ -283,17 +292,290 @@ ggsave(
 
 
 
+
+#######################################
+#######################################
+#######################################
+##Rice Growing Frequency MAP#########
+#################################
+#######################################
+#######################################
+#######################################
+
+# Read the ME shapefile
+ME2 <- st_read("C:/Users/rbmahbub/Documents/Data/GeospatialData/CumulativeVPM/ME_Shapefile/ME.shp")
+
+ar_rice_wgs84 <- terra::project(stacked_raster_rastCF_500, crs(stacked_raster_rast_meanLSWI))
+EVI_wgs84 <- terra::project(stacked_raster_rastEVI_500, crs(stacked_raster_rast_meanLSWI))
+
+# Convert the mean raster to a data frame for plotting and analysis
+cumulativerasdfrgf <- as.data.frame(ar_rice_wgs84, xy = TRUE) %>% drop_na()
+# Convert the mean raster to a data frame for plotting and analysis
+cumulativerasdfEVIdf <- as.data.frame(EVI_wgs84, xy = TRUE) %>% drop_na()
+# Define the name for the color legend
+nameColor <- bquote(atop(Rice~Growing~Frequency~""))
+# Define breaks for color scale
+my_breaks <- seq(0, 12, by = 1)
+
+# Define latitude labels with degree symbol
+latitude_breaks <- seq(33, 36, by = 0.2)
+latitude_labels <- unlist(lapply(latitude_breaks, function(x) paste(x, "°N")))
+
+# Cumulative GPP Map Plot
+cumulativemaprgf <- ggplot() +
+  geom_sf(fill='transparent', data=ME2) +
+  geom_raster(aes(x=x, y=y, fill=ar_rice), data=cumulativerasdfrgf) +
+  scale_fill_viridis(option="turbo", name=nameColor, direction=-1,
+                     breaks=my_breaks, limits=c(0, 12)) +
+  labs(x='Longitude', y='Latitude', color=nameColor) +
+  scale_y_continuous(breaks=latitude_breaks, labels=latitude_labels) +
+  cowplot::theme_cowplot(font_size=24) +
+  theme(legend.key.width=unit(4,"cm"), legend.spacing.x=unit(1, 'cm'),
+        axis.text=element_text(size=25)) +
+  ggsn::north(arkansasshp) +
+  ggsn::scalebar(arkansasshp, dist=50, dist_unit="km", st.size=5, height=0.02,
+                 transform=TRUE, model="WGS84")
+
+# Latitude vs. Cumulative GPP Smooth Plot
+cumulativegargf <- ggplot(cumulativerasdfrgf, aes(x=y, y=ar_rice)) +
+  geom_smooth(level=0.687) +
+  labs(x='Latitude', y=expression(Rice~Growing~Frequency)) +
+  scale_x_continuous(breaks=latitude_breaks, labels=latitude_labels, expand=c(0, 0)) +
+  coord_flip() +
+  cowplot::theme_cowplot(font_size=23) +
+  theme(axis.text=element_text(size=25))
+
+# Arrange the two plots side by side with labels
+cumulativearrangedrgf <- ggarrange(cumulativemaprgf, cumulativegargf, labels=c("A", "B"),
+                                font.label=list(size=35), widths=c(1.6,1),
+                                common.legend=TRUE, legend="bottom")
+
+cumulativearrangedrgf
+# Save the arranged plot
+ggsave("C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Figure/RiceGrowFreq.png",
+       plot=cumulativearrangedrgf, height=10, width=22, units="in", dpi=150)
+
+
+
+
+# Define the name for the color legend
+nameColor <- bquote(atop(Annual~Mean~EVI~""))
+
+# Define breaks for color scale
+my_breaks <- seq(0, 1, by = 0.1)
+
+# Define latitude labels with degree symbol
+latitude_breaks <- seq(33, 36, by = 0.2)
+latitude_labels <- unlist(lapply(latitude_breaks, function(x) paste(x, "°N")))
+
+# Cumulative GPP Map Plot
+cumulativemaprgf <- ggplot() +
+  geom_sf(fill='transparent', data=ME2) +
+  geom_raster(aes(x=x, y=y, fill=meanEVI), data=cumulativerasdfEVIdf) +
+  scale_fill_viridis(option="turbo", name=nameColor, direction=-1,
+                     breaks=my_breaks, limits=c(0, 0.5)) +
+  labs(x='Longitude', y='Latitude', color=nameColor) +
+  scale_y_continuous(breaks=latitude_breaks, labels=latitude_labels) +
+  cowplot::theme_cowplot(font_size=24) +
+  theme(legend.key.width=unit(4,"cm"), legend.spacing.x=unit(1, 'cm'),
+        axis.text=element_text(size=25)) +
+  ggsn::north(arkansasshp) +
+  ggsn::scalebar(arkansasshp, dist=50, dist_unit="km", st.size=5, height=0.02,
+                 transform=TRUE, model="WGS84")
+
+# Latitude vs. Cumulative GPP Smooth Plot
+cumulativegargf <- ggplot(cumulativerasdfEVIdf, aes(x=y, y=meanEVI)) +
+  geom_smooth(level=0.687) +
+  labs(x='Latitude', y=expression(Annual~Mean~EVI)) +
+  scale_x_continuous(breaks=latitude_breaks, labels=latitude_labels, expand=c(0, 0)) +
+  coord_flip() +
+  cowplot::theme_cowplot(font_size=23) +
+  theme(axis.text=element_text(size=25))
+
+# Arrange the two plots side by side with labels
+cumulativearrangedrgf <- ggarrange(cumulativemaprgf, cumulativegargf, labels=c("A", "B"),
+                                   font.label=list(size=35), widths=c(1.6,1),
+                                   common.legend=TRUE, legend="bottom")
+
+cumulativearrangedrgf
+# Save the arranged plot
+ggsave("C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Figure/EVIspatial.png",
+       plot=cumulativearrangedrgf, height=10, width=22, units="in", dpi=150)
+
+
 #################################
 ################################
 #######################################
 ####################################
 ########################
+dirLSWI <- "C:/Users/rbmahbub/Documents/Data/GeospatialData/CumulativeVPM/LSWI" ## # Specify the directory
+filesLSWI <- list.files(path = dirLSWI, pattern='.tif$', 
+                        all.files=TRUE, full.names=FALSE) # List all files in the directory with a .tif extension
+setwd(dirLSWI)
+allrastersLSWI <- lapply(filesLSWI, raster)#import all raster files in folder using lapply
+stacked_rasterLSWI <- stack(allrastersLSWI) ### all raster stack
+
+dirTemp <- "C:/Users/rbmahbub/Documents/Data/GeospatialData/CumulativeVPM/Temperature/MeanTemperature" ## # Specify the directory
+filesTemp <- list.files(path = dirTemp, pattern='.tif$', 
+                        all.files=TRUE, full.names=FALSE) # List all files in the directory with a .tif extension
+setwd(dirTemp)
+allrastersTemp <- lapply(filesTemp, raster)#import all raster files in folder using lapply
+stacked_rasterTemp <- stack(allrastersTemp) ### all raster stack
+
+dirPAR <- "C:/Users/rbmahbub/Documents/Data/GeospatialData/CumulativeVPM/PAR" ## # Specify the directory
+filesPAR <- list.files(path = dirPAR, pattern='.tif$', 
+                        all.files=TRUE, full.names=FALSE) # List all files in the directory with a .tif extension
+setwd(dirPAR)
+allrastersPAR <- lapply(filesPAR, raster)#import all raster files in folder using lapply
+stacked_rasterPAR <- stack(allrastersPAR) ### all raster stack
+
+
+single_shapefile <- st_read("C:/Users/rbmahbub/Documents/Data/GeospatialData/Shapefile/SingleShapefileAllDriver/SingleShapefileAlldataframes.shp")
+single_shapefiledf<-as.data.frame(single_shapefile)
+single_shapefile$EVImultiyear<-exact_extract(stacked_rasterEVI, single_shapefile, 'mean') ### SOC raster
+single_shapefile$GPPmultiyear<-exact_extract(stacked_raster_rast, single_shapefile, 'mean') ### SOC raster
+single_shapefile$LSWImultiyear<-exact_extract(stacked_rasterLSWI, single_shapefile, 'mean') ### SOC raster
+single_shapefile$PARmultiyear<-exact_extract(stacked_rasterPAR, single_shapefile, 'mean') ### SOC raster
+single_shapefile$Tempmultiyear<-exact_extract(stacked_rasterTemp, single_shapefile, 'mean') ### SOC raster
+
+EVIdataframe<-single_shapefile$EVImultiyear
+GPPdataframe<-single_shapefile$GPPmultiyear
+LSWIdataframe<-single_shapefile$LSWImultiyear
+PARdataframe<-single_shapefile$PARmultiyear
+Tempdataframe<-single_shapefile$Tempmultiyear
+
+EVIdataframe<-as.data.frame(EVIdataframe)
+GPPdataframe<-as.data.frame(GPPdataframe)
+LSWIdataframe<-as.data.frame(LSWIdataframe)
+PARdataframe<-as.data.frame(PARdataframe)
+Tempdataframe<-as.data.frame(Tempdataframe)
+
+EVIdataframe$geometry<-(single_shapefiledf$geometry)
+GPPdataframe$geometry<-(single_shapefiledf$geometry)
+LSWIdataframe$geometry<-(single_shapefiledf$geometry)
+PARdataframe$geometry<-(single_shapefiledf$geometry)
+Tempdataframe$geometry<-(single_shapefiledf$geometry)
+
+GPPdataframe$rcgrwng <-single_shapefiledf$rcgrwng  #### sometimes it is ar_rice have to figure it out
+EVIdataframe$rcgrwng <-single_shapefiledf$rcgrwng  #### sometimes it is ar_rice have to figure it out
+LSWIdataframe$rcgrwng <-single_shapefiledf$rcgrwng  #### sometimes it is ar_rice have to figure it out
+PARdataframe$rcgrwng <-single_shapefiledf$rcgrwng  #### sometimes it is ar_rice have to figure it out
+Tempdataframe$rcgrwng <-single_shapefiledf$rcgrwng  #### sometimes it is ar_rice have to figure it out
 
 
 
 
+columns_to_EVI <- c( "mean.EVI_SG_mean.1", "mean.EVI_SG_mean.2" , "mean.EVI_SG_mean.3", 
+                     "mean.EVI_SG_mean.4","mean.EVI_SG_mean.5" , "mean.EVI_SG_mean.6" ,
+                     "mean.EVI_SG_mean.7", "mean.EVI_SG_mean.8" , "mean.EVI_SG_mean.9", 
+                     "mean.EVI_SG_mean.10","mean.EVI_SG_mean.11", "mean.EVI_SG_mean.12",
+                     "mean.EVI_SG_mean.13")
+columns_to_GPP <- c( "mean.value.1",  "mean.value.2"  ,"mean.value.3",  "mean.value.4" ,
+                     "mean.value.5",  "mean.value.6"  ,"mean.value.7",  "mean.value.8" ,
+                     "mean.value.9" , "mean.value.10", "mean.value.11", "mean.value.12",
+                     "mean.value.13")
+
+columns_to_LSWI <- c( "mean.LSWI_SG_mean.1", "mean.LSWI_SG_mean.2" , "mean.LSWI_SG_mean.3", 
+                     "mean.LSWI_SG_mean.4","mean.LSWI_SG_mean.5" , "mean.LSWI_SG_mean.6" ,
+                     "mean.LSWI_SG_mean.7", "mean.LSWI_SG_mean.8" , "mean.LSWI_SG_mean.9", 
+                     "mean.LSWI_SG_mean.10","mean.LSWI_SG_mean.11", "mean.LSWI_SG_mean.12",
+                     "mean.LSWI_SG_mean.13")
+columns_to_Temp <- c( "mean.tmean_mean.1",  "mean.tmean_mean.2"  ,"mean.tmean_mean.3",  "mean.tmean_mean.4" ,
+                     "mean.tmean_mean.5",  "mean.tmean_mean.6"  ,"mean.tmean_mean.7",  "mean.tmean_mean.8" ,
+                     "mean.tmean_mean.9" , "mean.tmean_mean.10", "mean.tmean_mean.11", "mean.tmean_mean.12",
+                     "mean.tmean_mean.13")
+columns_to_PAR <- c( "mean.par_mean.1",  "mean.par_mean.2"  ,"mean.par_mean.3",  "mean.par_mean.4" ,
+                      "mean.par_mean.5",  "mean.par_mean.6"  ,"mean.par_mean.7",  "mean.par_mean.8" ,
+                      "mean.par_mean.9" , "mean.par_mean.10", "mean.par_mean.11", "mean.par_mean.12",
+                      "mean.par_mean.13")
 
 
+# Remove rows where at least 11 columns have NA values
+EVIdataframehl <- dplyr::filter(EVIdataframe, rcgrwng >5)
+GPPdataframehl <- dplyr::filter(GPPdataframe, rcgrwng >5)
+LSWIdataframehl <- dplyr::filter(LSWIdataframe, rcgrwng >5)
+PARdataframehl <- dplyr::filter(PARdataframe, rcgrwng >5)
+Tempdataframehl <- dplyr::filter(Tempdataframe, rcgrwng >5)
+
+
+# Remove columns with 12 or more NaN values in each row
+GPPdataframehl <- GPPdataframehl[rowSums(is.na(GPPdataframehl)) < 12, ]
+EVIdataframehl <- EVIdataframehl[rowSums(is.na(EVIdataframehl)) < 12, ]
+LSWIdataframehl <- LSWIdataframehl[rowSums(is.na(LSWIdataframehl)) < 12, ]
+PARdataframehl <- PARdataframehl[rowSums(is.na(PARdataframehl)) < 12, ]
+Tempdataframehl <- Tempdataframehl[rowSums(is.na(Tempdataframehl)) < 12, ]
+
+# Function to calculate slope and p-value for each row
+calculate_slope_pvalue <- function(row) {
+  model <- lm(unlist(row) ~ c(1:length(row)))  # Fit linear model
+  slope <- model$coefficients[[2]]              # Extract slope
+  p_value <- summary(model)$coefficients[2, 4]  # Extract p-value
+  return(c(slope, p_value))
+}
+
+# Apply the function to each row and add as new columns
+GPPdataframehl_slope <- GPPdataframehl %>%
+  rowwise() %>%
+  dplyr::mutate(slope = calculate_slope_pvalue(c_across(all_of(columns_to_GPP)))[1],
+                p_value = calculate_slope_pvalue(c_across(all_of(columns_to_GPP)))[2])
+
+EVIdataframehl_slope <- EVIdataframehl %>%
+  rowwise() %>%
+  dplyr::mutate(slopeEVI = calculate_slope_pvalue(c_across(all_of(columns_to_EVI)))[1],
+                p_valueEVI = calculate_slope_pvalue(c_across(all_of(columns_to_EVI)))[2])
+
+LSWIdataframehl_slope <- LSWIdataframehl %>%
+  rowwise() %>%
+  dplyr::mutate(slopeLSWI = calculate_slope_pvalue(c_across(all_of(columns_to_LSWI)))[1],
+                p_valueLSWI = calculate_slope_pvalue(c_across(all_of(columns_to_LSWI)))[2])
+
+PARdataframehl_slope <- PARdataframehl %>%
+  rowwise() %>%
+  dplyr::mutate(slopepar = calculate_slope_pvalue(c_across(all_of(columns_to_PAR)))[1],
+                p_valuepar = calculate_slope_pvalue(c_across(all_of(columns_to_PAR)))[2])
+
+Tempdataframehl_slope <- Tempdataframehl %>%
+  rowwise() %>%
+  dplyr::mutate(slopetemp = calculate_slope_pvalue(c_across(all_of(columns_to_Temp)))[1],
+                p_valuetemp  = calculate_slope_pvalue(c_across(all_of(columns_to_Temp)))[2])
+
+
+
+GPPdataframehl_slope_pvalue <- GPPdataframehl_slope[GPPdataframehl_slope$p_value < 0.05, ]
+
+merged_data <- left_join(GPPdataframehl_slope_pvalue, EVIdataframehl_slope, by = "geometry")
+merged_data <- left_join(merged_data, LSWIdataframehl_slope, by = "geometry")
+merged_data <- left_join(merged_data, PARdataframehl_slope, by = "geometry")
+merged_data <- left_join(merged_data, Tempdataframehl_slope, by = "geometry")
+hist(merged_data$rcgrwng.y) 
+
+
+
+# Read the shapefile using st_read
+single_shapefile <- st_read("C:/Users/rbmahbub/Documents/Data/GeospatialData/Shapefile/SingleShapefileAllDriver/SingleShapefileAlldataframes.shp")
+single_shapefiledf<-as.data.frame(single_shapefile)
+merged_data_clay <- left_join(merged_data, single_shapefile, by = "geometry")
+selected_columns <- merged_data_clay[, c("slopeEVI", "p_valueEVI", "DN", 
+                                         "GPPggrg", "rcgrwng.y.y.y", "clayb0", 
+                                         "clayb10", "clayb30", "cl01030", 
+                                         "EVI", "LSWI", "slope", "slopeLSWI", "slopepar", "slopetemp")]
+write.csv(selected_columns, "C:/Users/rbmahbub/Documents/Data/GeospatialData/Shapefile/SingleShapefileAllDriver/merged_data_clay.csv", row.names = FALSE)
+merged_data_clay <- read.csv("C:/Users/rbmahbub/Documents/Data/GeospatialData/Shapefile/SingleShapefileAllDriver/merged_data_clay.csv")
+###SlopeGPP SlopeEVI Relationship
+slopeGPP<-ggscatter(merged_data_clay, x = "slopetemp", y = "slope", add = "reg.line",
+                    add.params = list(color = "blue", fill = "lightgray"), size = 3) +
+  stat_cor(
+    aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
+    label.x = -0.02, label.y = 9, p.accuracy = 0.001, size = 10
+  ) +
+  stat_regline_equation(label.x = -0.02, label.y = 4, size = 10) +
+  scale_y_continuous(expand = c(0, 0)) +
+  xlab("Slope of EVI against time (2008-2020)") +
+  font("xy.text", size = 24) +
+  font("xlab", size = 24) +
+  font("ylab", size = 24) +
+  ylab(expression(paste("Slope of GPP against time (2008-2020)(g C ", m^-2, year^-1, ")")))
+slopeGPP
 
 
 
@@ -324,10 +606,10 @@ columns_to_EVI <- c( "mean.EVI_SG_mean.1", "mean.EVI_SG_mean.2" , "mean.EVI_SG_m
                            "mean.EVI_SG_mean.7", "mean.EVI_SG_mean.8" , "mean.EVI_SG_mean.9", 
                           "mean.EVI_SG_mean.10","mean.EVI_SG_mean.11", "mean.EVI_SG_mean.12",
                            "mean.EVI_SG_mean.13")
-columns_to_GPP <- c( "mean.gpp_sum.1",  "mean.gpp_sum.2"  ,"mean.gpp_sum.3",  "mean.gpp_sum.4" ,
-                      "mean.gpp_sum.5",  "mean.gpp_sum.6"  ,"mean.gpp_sum.7",  "mean.gpp_sum.8" ,
-                      "mean.gpp_sum.9" , "mean.gpp_sum.10", "mean.gpp_sum.11", "mean.gpp_sum.12",
-                     "mean.gpp_sum.13")
+columns_to_GPP <- c( "mean.value.1",  "mean.value.2"  ,"mean.value.3",  "mean.value.4" ,
+                      "mean.value.5",  "mean.value.6"  ,"mean.value.7",  "mean.value.8" ,
+                      "mean.value.9" , "mean.value.10", "mean.value.11", "mean.value.12",
+                     "mean.value.13")
 
 # Remove rows where at least 11 columns have NA values
 EVIdataframehl <- filter(EVIdataframe, rcgrwng >5)

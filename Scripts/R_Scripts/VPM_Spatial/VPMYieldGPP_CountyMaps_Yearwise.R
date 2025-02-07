@@ -19,15 +19,19 @@ require(ggplot2)
 require(plyr)
 library(Metrics)
 library(ggspatial)
-library(ggplot2)
 library(viridis)
 library(trend)
 library(gridExtra)
 library(dplyr)
+library(remotes)
+library(lterdatasampler)
+library(ggtext)
+library(raster)
+library(tidyr)
 
 #######VPM Raster Images#######################
 ## Set the path where the raster files are located
-path = "C:/Users/rbmahbub/Documents/Data/GeospatialData/CumulativeVPM/CumulativeVPM/"
+path = "C:/Users/rbmahbub/Documents/Data/GeospatialData/CumulativeVPM/CumulativeVPMRasterPolygonCoverageFilter/"
 ## Get the list of image file names with the .tif extension from the specified path
 Imagenameyield <-list.files(path = path, pattern='.tif$', 
                             all.files=TRUE, full.names=FALSE)
@@ -36,7 +40,7 @@ pathlistyield <- vector("list", 13)
 rastlistyield<- vector("list", 13)
 ## Iterate over the image file names to construct their full paths
 for (i in 1:13) {
-  pathlistyield[i] = paste('C:/Users/rbmahbub/Documents/Data/GeospatialData/CumulativeVPM/CumulativeVPM/', Imagenameyield[i], sep = "")
+  pathlistyield[i] = paste("C:/Users/rbmahbub/Documents/Data/GeospatialData/CumulativeVPM/CumulativeVPMRasterPolygonCoverageFilter/", Imagenameyield[i], sep = "")
   year = year+1 ### image names are like this "arkansasRice2008VPMcumulative.tif", "arkansasRice2009VPMcumulative.tif
 } 
 ## Read each raster file from its corresponding path and store them in a list
@@ -49,7 +53,7 @@ year <- 2008
 # Loop through each file
 for (i in 1:13) {
   # Construct the full path to the raster file
-  pathlistyield[i] <- paste0('C:/Users/rbmahbub/Documents/Data/GeospatialData/CumulativeVPM/CumulativeVPM/', Imagenameyield[i])
+  pathlistyield[i] <- paste0("C:/Users/rbmahbub/Documents/Data/GeospatialData/CumulativeVPM/CumulativeVPMRasterPolygonCoverageFilter/", Imagenameyield[i])
   # Increment the year based on the file name
   year <- year + 1
 }
@@ -94,10 +98,8 @@ for (i in 1:13) {
 } 
 
 # Check if CRS are the same
-# Print CRS of yieldlistshp
-# Check CRS for all files
 for (i in 1:13) {
-  cat("File", i, ":", st_crs(yieldlistshp[[i]]) == st_crs(rastlistyield[[i]]), "\n")
+  cat("File", i, ":", st_crs(yieldlistshp[[i]]) == st_crs(rastlistyield[[i]]), "\n") # Check CRS for all files
 }
 
 
@@ -149,9 +151,7 @@ gppricecounty$yieldgm<-(gppricecounty$Yield)*0.112085
 ## Convert the gpp to 8 day cumulative (the gpp was giving non numeric argument error so converted to binary operator==)
 gppricecounty$meanGPP<-as.numeric(gppricecounty$meanGPP)
 gppricecounty$gpp_sum_8day<-(gppricecounty$meanGPP)*8
-
 plot(gppricecounty$gpp_sum_8day, gppricecounty$yieldgm)
-(cor(gppricecounty$gpp_sum_8day, gppricecounty$yieldgm))^2
 
 # Fit linear regression model
 model <- lm(yieldgm ~ gpp_sum_8day, data = gppricecounty)
@@ -163,12 +163,11 @@ print(intercept)
 print(slope)
 
 gppricecounty$predictedyield<- intercept+ slope*gppricecounty$gpp_sum_8day
-rmseyield<-rmse(gppricecounty$yieldgm, gppricecounty$predictedyield)
-rmseyield
+VPMcalib50r2<-(cor(gppricecounty$gpp_sum_8day, gppricecounty$yieldgm))^2
+VPMcalib50rmse<-Metrics::rmse(gppricecounty$yieldgm, gppricecounty$predictedyield)
 
 
 lb1 <- paste("RMSE == rmseyield", round(runif(1),4))
-
 gppcountyyieldplot<-ggplot(data=gppricecounty, aes(x =gpp_sum_8day , y =yieldgm, col = Year))+
   #geom_abline(intercept = 0, slope = 1, size =5, col ="red", linetype="dashed")+
   geom_point(size =10) +
@@ -191,7 +190,7 @@ gppcountyyieldplot<-ggplot(data=gppricecounty, aes(x =gpp_sum_8day , y =yieldgm,
   #annotate("text", x = 0, y = 30, label = paste("Number of observations: ", nrow(way3pixel3df)), size =5)+
   theme_classic()+
   theme(text = element_text(size = 30))+
-  ggplot2::annotate(geom = "text", x = 1850, y = 520, label = "RMSE = 61", size = 10)+
+  ggplot2::annotate(geom = "text", x = 1850, y = 520, label = "RMSE = 58", size = 10)+
   theme(legend.key.size = unit(2, 'cm'))+
   theme(axis.line=element_line(size=1.7))+
   theme(axis.ticks.length = unit(.25, "cm"))+
@@ -202,7 +201,6 @@ ggsave("C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Figure/VPMyield.png",w
 
 ### Yearwise state scale increase
 statearyield<- read.csv("C:/Users/rbmahbub/Documents/Data/YieldData/Harvested_ACre_Rice_Arkansas.csv")
-###
 # Remove commas from the values
 statearyield$Value <- gsub(",", "", statearyield$Value)
 # Convert the column to numeric
@@ -211,7 +209,7 @@ statearyield$Value <- as.numeric(statearyield$Value)
 conversion_factor <- 453.59237 / 4046.85642  # Calculating the conversion factor
 statearyield$yieldgm <- statearyield$Value * conversion_factor
 
-library(dplyr)
+
 statearyield$Year<-as.character(statearyield$Year)
 statearyield$yieldgm<-as.numeric(statearyield$yieldgm)
 # Group by Year and calculate mean yieldgm, dropping empty groups
@@ -230,12 +228,8 @@ agg_tbl$Diff_growth <- c(NA, diff(agg_tbl$mean_yield))
 agg_tbl$Rate_percent <- (agg_tbl$Diff_growth / agg_tbl$mean_yield) / agg_tbl$Diff_year * 100
 
 # Print the updated data frame
-print(agg_tbl)
-
-
-
-
 agg_tbl
+
 write.csv(agg_tbl, 
           "C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Figure/growth_rate.csv", 
           row.names = FALSE)
@@ -262,6 +256,7 @@ merged_df <- year_wise_correlations %>%
   left_join(agg_tbl, by = "Year")
 
 # Print the merged dataframe
+merged_df_gppyield <-merged_df
 print(merged_df)
 plot(merged_df$correlation, merged_df$Diff_growth)
 write.csv(merged_df, file = "C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Figure/yieldyearwisecorrelation.csv", row.names = FALSE)
@@ -272,7 +267,6 @@ mean(merged_df$Rate_percent, na.rm = TRUE)
 # Assuming gppricecounty is your data frame
 # Define the file path
 file_path <- "C:/Users/rbmahbub/Documents/Data/YieldData/Harvested_ACre_Rice_Arkansas.csv"
-
 # Read the CSV file
 stateyield <- read.csv(file_path)
 # Remove commas and convert to numeric
@@ -285,15 +279,12 @@ ggplot(data = stateyield, aes(x = Year, y = Value)) +
   xlab("Year") +  # Label for x-axis
   ylab("County Yield") 
 
-library(trend)
-library(tidyverse)
-library(remotes)
-library(lterdatasampler)
+
 ###mk test:https://www.nataliechazal.info/post/mk_rtrend/
 aggregated <- gppricecounty %>%
   dplyr::mutate(year = Year) %>%
   group_by(year) %>%
-  summarize(meanyield = mean(gpp_sum_8day, na.rm=TRUE)) %>%
+  dplyr::summarize(meanyield = mean(gpp_sum_8day, na.rm=TRUE)) %>%
   ungroup()
 aggregated
 ##############################
@@ -322,7 +313,6 @@ print(paste("Increasing rate of yield:", increasing_rate_yield))
 setwd("C:/Users/rbmahbub/Documents/Data/YieldData")
 # Read the CSV file
 AreaHarvested <- read.csv("Rice_Planted_Harvested_Acres.csv")
-AreaHarvested
 
 
 ### Under Data.item column select the rows where Area_planted rows
@@ -342,24 +332,29 @@ Areaplanted_selected <- Areaplanted %>%
   dplyr::mutate(AreaPlanted = as.numeric(gsub(",", "", Value))) %>%
   dplyr::select(-Value) %>%
   dplyr::select(County, AreaPlanted, COUNTYFPYear)
-
+Areaplanted_selected<-as.data.frame(Areaplanted_selected)
 gppricecountyarea <- merge(gppricecounty, Areaplanted_selected, by = "COUNTYFPYear")
 
-gppcountyyieldplot <- ggplot(data = gppricecountyarea, aes(x = gpp_sum_8day, y = yieldgm, col = Year, size = AreaPlanted)) +
+# Assuming gppricecountyarea is your dataframe and Areaplanted is the column to be converted
+gppricecountyarea$AreaPlanted<-as.numeric(gppricecountyarea$AreaPlanted)
+gppricecountyarea$Areaplantedha <- gppricecountyarea$AreaPlanted / 2.471
+
+gppcountyyieldplot <- ggplot(data = gppricecountyarea, aes(x = gpp_sum_8day, y = yieldgm, col = Year, size = Areaplantedha)) +
   geom_point() +
   geom_smooth(method = lm, se = FALSE, size = 5) +
   xlab(bquote('Mean Cumulative GPP ('*g~ 'C'~ m^-2~year^-1*')')) +
-  ylab(bquote('Reported Yield ('*g~ m^-2~season^-1*')')) +
+  ylab(bquote(atop('Mean County Rice Yield', '('*g~m^-2~season^-1*')'))) +
+
   scale_y_continuous(limits = c(500, 1000)) +
   scale_color_continuous(high = "#132B43", low = "#56B1F7", breaks = c(2008, 2012, 2016, 2020), labels = c("2008", "2012", "2016", "2020")) +
-  scale_size_continuous(name = "Area planted (acre)", labels = scales::comma, breaks = c(25000, 50000, 75000, 100000)) +  # Set the legend breaks and format the labels
-  stat_regline_equation(label.x = 1200, label.y = 1000, size = 8) +
+  scale_size_continuous(name = "Area planted (hectare)", labels = scales::comma, breaks = c(10000, 20000, 30000, 40000)) +  # Set the legend breaks and format the labels
+  stat_regline_equation(label.x = 1200, label.y = 550, size = 8) +
   stat_cor(aes(label = paste(..rr.label.., ..p.label.., sep = "~','~")), 
-           p.accuracy = 0.001, label.x = 1200, label.y = 970, size = 8) +
+           p.accuracy = 0.001, label.x = 1200, label.y = 600, size = 8) +
   theme_classic() +
   theme(text = element_text(size = 25)) +
-  ggplot2::annotate("text", x = 1800, y = 1000, label = ", RMSE = 61", size = 8) +
-  ggplot2::annotate("text", x = 2210, y = 1000, label = "g~C~m^-2~season^-1",size = 8, parse = TRUE)+
+  ggplot2::annotate("text", x = 1350, y = 500, label = "RMSE = 58", size = 8) +
+  ggplot2::annotate("text", x = 1750, y = 500, label = "g~C~m^-2~season^-1",size = 8, parse = TRUE)+
   #annotate(geom = "text", x = 1800, y = 1000, label = "g C[2]", size = 8) +
   theme(legend.key.size = unit(1.5, 'cm')) +
   theme(axis.line = element_line(size = 1.7)) +
@@ -370,9 +365,42 @@ gppcountyyieldplot
 ggsave("C:/Users/rbmahbub/Box/Research/ManuscriptFile/Optimum Air Temperature/Figure/VPMyieldArea.png",width = 14, height = 8 )
 ggsave("C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Figure/VPMyieldArea.png",width = 14, height = 8 )
 
+
+# Calculate the weighted regression model
+weighted_lm <- lm(yieldgm ~ gpp_sum_8day, data = gppricecountyarea, weights = Areaplantedha)
+
+# Extract the R^2 value
+weighted_r2 <- summary(weighted_lm)$r.squared
+
+# Create the plot
+gppcountyyieldplot <- ggplot(data = gppricecountyarea, aes(x = gpp_sum_8day, y = yieldgm, col = Year, size = Areaplantedha)) +
+  geom_point() +
+  geom_smooth(aes(weight = Areaplantedha), method = lm, se = FALSE, size = 1) +
+  xlab(bquote('Mean Cumulative GPP ('*g~ 'C'~ m^-2~year^-1*')')) +
+  ylab(bquote('Mean Annual County Rice Yield ('*g~ m^-2~season^-1*')')) +
+  scale_y_continuous(limits = c(500, 1000)) +
+  scale_color_continuous(high = "#132B43", low = "#56B1F7", breaks = c(2008, 2012, 2016, 2020), labels = c("2008", "2012", "2016", "2020")) +
+  scale_size_continuous(name = "Area planted (hectare)", labels = scales::comma, breaks = c(10000, 20000, 30000, 40000)) +  # Set the legend breaks and format the labels
+  stat_regline_equation(label.x = 1200, label.y = 550, size = 8) +
+  stat_cor(aes(label = paste(..rr.label.., ..p.label.., sep = "~','~")), 
+           p.accuracy = 0.001, label.x = 1200, label.y = 600, size = 8) +
+  theme_classic() +
+  theme(text = element_text(size = 25)) +
+  ggplot2::annotate("text", x = 1350, y = 500, label = "RMSE = 58", size = 8) +
+  ggplot2::annotate("text", x = 1750, y = 500, label = "g~C~m^-2~season^-1", size = 8, parse = TRUE) +
+  ggplot2::annotate("text", x = 1350, y = 750, label = paste("Weighted R^2 =", round(weighted_r2, 3)), size = 8) +
+  theme(legend.key.size = unit(1.5, 'cm')) +
+  theme(axis.line = element_line(size = 1.7)) +
+  theme(axis.ticks.length = unit(.25, "cm")) +
+  theme(plot.margin = grid::unit(c(0, 0, 0, 0), "mm"))
+
+print(gppcountyyieldplot)
+
+
+
 # Define the breaks and labels
-breaks <- c(0, 25000, 50000, 75000, 100000, 144500)
-labels <- c("0-25000", "25000-50000", "50000-75000", "75000-100000", "100000-150000")
+breaks <- c(0, 10000, 20000, 30000, 40000, 59000)
+labels <- c("0-10000", "10000-20000", "20000-30000", "30000-40000", "40000-59000")
 
 # Create a data frame to store results
 performance_metrics <- data.frame(AreaPlantedRange = labels, MAE = NA, RMSE = NA, Bias = NA, R2 = NA, n = NA)
@@ -381,29 +409,22 @@ performance_metrics <- data.frame(AreaPlantedRange = labels, MAE = NA, RMSE = NA
 for (i in seq_along(labels)) {
   # Filter the data for the current range
   data_range <- gppricecountyarea %>%
-    filter(AreaPlanted > breaks[i] & AreaPlanted <= breaks[i+1])
+    dplyr::filter(Areaplantedha > breaks[i] & Areaplantedha <= breaks[i+1])
   
   # Fit linear regression model
   model <- lm(yieldgm ~ gpp_sum_8day, data = data_range)
-  
   # Calculate predictions
   predictions <- predict(model)
-  
   # Calculate mean absolute error (MAE)
   mae <- mean(abs(predictions - data_range$yieldgm))
-  
   # Calculate root mean square error (RMSE)
   rmse <- sqrt(mean((predictions - data_range$yieldgm)^2))
-  
   # Calculate bias
   bias <- mean(predictions - data_range$yieldgm)
-  
   # Calculate R-squared (R2)
   r2 <- summary(model)$r.squared
-  
   # Number of observations
   n <- nrow(data_range)
-  
   # Store the metrics in the data frame
   performance_metrics[i, "MAE"] <- mae
   performance_metrics[i, "RMSE"] <- rmse
@@ -415,25 +436,20 @@ for (i in seq_along(labels)) {
 # View the performance metrics
 print(performance_metrics)
 performance_metrics$AreaPlantedRange <- factor(performance_metrics$AreaPlantedRange,
-                                               levels = c("0-25000", "25000-50000", "50000-75000",
-                                                          "75000-100000", "100000-150000"))
-
-# Plot the boxplot with n values as
-
+                                               levels = c("0-10000", "10000-20000", "20000-30000",
+                                                          "30000-40000", "40000-59000"))
 # Create a box plot
 boxplot <- ggplot(performance_metrics, aes(x = AreaPlantedRange, y = RMSE)) +
   geom_boxplot(fill = "#56B1F7", color = "#132B43") +
   geom_point(aes(y = RMSE), color = "red", size = 8) +  # Add individual data points
   geom_text(aes(label = paste("n =", n)), vjust = -2.5, hjust = 0.5, size = 10) +  # Add n values as labels
-  labs(x = "Area Planted Range (acre)", y = expression("Root Mean Squared Error (RMSE) of the \n relation between GPPcum and yield")) +
+  labs(x = "Area Planted Range (hectare)", y = expression("Root Mean Squared Error (RMSE) of the \n relation between GPPcum and yield")) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 24),  # Rotate x-axis labels and set text size
         axis.text.y = element_text(size = 22),  # Set text size for y-axis labels
         axis.title.x = element_text(size = 24),  # Set text size for x-axis title
         axis.title.y = element_text(size = 24, margin = margin(t = 0, r = 10, b = 0, l = 25))) +  # Set text size and adjust position for y-axis title
   scale_y_continuous(limits = c(0, 72))  # Set y-axis limits
-
-
 
 # Save the plot
 ggsave(filename = "C:/Users/rbmahbub/Box/Research/ManuscriptFile/Optimum Air Temperature/Figure/boxplot.png", 
@@ -444,15 +460,15 @@ ggsave(filename = "C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Figure/boxp
 # Create a box plot for R2
 # Reorder the levels of the "AreaPlantedRange" factor variable
 performance_metrics$AreaPlantedRange <- factor(performance_metrics$AreaPlantedRange,
-                                               levels = c("0-25000", "25000-50000", "50000-75000",
-                                                          "75000-100000", "100000-150000"))
+                                               levels = c("0-10000", "10000-20000", "20000-30000",
+                                                          "30000-40000", "40000-59000"))
 
 # Plot the boxplot with n values as labels
 boxplotr2<-ggplot(performance_metrics, aes(x = AreaPlantedRange, y = R2)) +
   geom_boxplot(fill = "#56B1F7", color = "#132B43") +
   geom_point(aes(y = R2), color = "red", size = 8) +
   geom_text(aes(label = paste("n =", n)), vjust = -1.5, hjust = 0.5, size = 10) +  # Add n values as labels
-  labs(x = "Area Planted Range (acre)",  y = expression("R-squared (R"^2*") of the relationship between GPP and yield")) +
+  labs(x = "Area Planted Range (hectare)",  y = expression("R-squared (R"^2*") of the relationship between GPP and yield")) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 24),  # Rotate x-axis labels and set text size
         axis.text.y = element_text(size = 22),  # Set text size for y-axis labels
@@ -464,12 +480,11 @@ ggsave(filename = "C:/Users/rbmahbub/Box/Research/ManuscriptFile/Optimum Air Tem
 ggsave(filename = "C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Figure/boxplotr2.png", 
        plot = boxplot, width = 18, height = 12)
 
-# Assuming you have separate plots named plot_rmse and plot_r2
 # Assuming you have separate plots named boxplot and boxplotr2
 boxplot_no_x_axis <- boxplot + theme(axis.title.x = element_blank(),
                                      axis.text.x = element_blank())
-boxplotr2rmse <- grid.arrange(boxplot_no_x_axis + labs(x = NULL) + annotate("text", x = 5, y = 70, label = "A", size = 12),
-                               boxplotr2 + annotate("text", x = 5, y =0.6, label = "B", size = 12), 
+boxplotr2rmse <- grid.arrange(boxplot_no_x_axis + labs(x = NULL) + ggplot2::annotate("text", x = 5, y = 70, label = "A", size = 12),
+                               boxplotr2 + ggplot2::annotate("text", x = 5, y =0.6, label = "B", size = 12), 
                                nrow = 2, 
                                ncol = 1)
 ggsave(filename = "C:/Users/rbmahbub/Box/Research/ManuscriptFile/Optimum Air Temperature/Figure/boxplotr2emse.png", 
@@ -482,7 +497,6 @@ gppricecountyarea$count_occurrences <- county_counts[gppricecountyarea$County] #
 gppricecountyarea <- gppricecountyarea[gppricecountyarea$count_occurrences >= 3, ] # Filter the dataframe to remove observations where the county count is less than 3
 
 #### County basedmann kendall test
-# Group by COUNTYFP
 # Group by COUNTYFP
 mktestacrosscounty <- gppricecountyarea %>%
   dplyr::group_by(COUNTYFP) %>%
@@ -500,12 +514,8 @@ gppricecountyarea$COUNTYFP
 plot(mktestacrosscounty$pvalueyield, mktestacrosscounty$pvaluegpp)
 
 ### merge them with the shapefile
-# Merge datasets by COUNTYFP
-countypvalues <- merge(countyonevariable, mktestacrosscounty, by = "COUNTYFP", all.x = TRUE)
+countypvalues <- merge(countyonevariable, mktestacrosscounty, by = "COUNTYFP", all.x = TRUE)# Merge datasets by COUNTYFP
 countypvaluesdf<-as.data.frame(countypvalues)
-
-
-
 countypvalues <- countypvalues %>%
         dplyr::mutate(pvalueyieldclass = ifelse(pvalueyield < 0.05 & trendgpp > 0, "positive significant",
                                             ifelse(pvalueyield < 0.05 & trendgpp < 0, "negative significant",
@@ -522,24 +532,19 @@ countypvalues <- countypvalues %>%
 
 
 ### for the names of the county we will merge two datframes
-# Perform left join and keep only unique rows
 gppricecountyareacounty <- gppricecountyarea %>%
   dplyr::select(County, COUNTYFP)
 countypvalues <- countypvalues %>%
-  left_join(gppricecountyareacounty, by = "COUNTYFP", all.x = TRUE) %>%
+  left_join(gppricecountyareacounty, by = "COUNTYFP", all.x = TRUE) %>% # Perform left join and keep only unique rows
   distinct(COUNTYFP, .keep_all = TRUE)
-
 ##color generator :https://hauselin.github.io/colorpalettejs/
 # Plot map of p-values using ggplot and sf
-
-
-
 countypvalues$meanaream2<-countypvalues$meanarea * 4046.86
 # Create plots
 plot1 <- ggplot() +
   geom_sf(data = countypvalues) +
-  geom_sf(data = countypvalues %>% filter(!is.na(pvaluegppclass)), aes(fill = pvaluegppclass)) +
-  geom_sf_label(data = countypvalues %>% filter(!is.na(pcorrelatiopvalue)), aes(label = County), size = 2)+
+  geom_sf(data = countypvalues %>% dplyr::filter(!is.na(pvaluegppclass)), aes(fill = pvaluegppclass)) +
+  geom_sf_label(data = countypvalues %>% dplyr::filter(!is.na(pcorrelatiopvalue)), aes(label = County), size = 2)+
   scale_fill_manual(values = c("negative insignificant" = "#FFDB6D", "negative significant"="#D16103","positive insignificant" ="#52854C","positive significant" = "#4E84C4")) +
   labs(fill = paste("p-value (<0.05)\nof Mann-Kendall test\nof county GPP \nacross 13 years", sep = "")) +
   theme_bw() +
@@ -554,7 +559,7 @@ plot1
 
 plot2 <- ggplot() +
   geom_sf(data = countypvalues) +
-  geom_sf(data = countypvalues %>% filter(!is.na(pvalueyieldclass)), aes(fill = pvalueyieldclass)) +
+  geom_sf(data = countypvalues %>% dplyr::filter(!is.na(pvalueyieldclass)), aes(fill = pvalueyieldclass)) +
   scale_fill_manual(values = c("negative insignificant" = "#FFDB6D", "negative significant"="#D16103","positive insignificant" ="#52854C","positive significant" = "#4E84C4")) +
   theme_bw() +
   theme(plot.margin = margin(0, 0, 0, 0))+
@@ -567,7 +572,7 @@ plot2 <- ggplot() +
 
 plot3 <- ggplot() +
   geom_sf(data = countypvalues) +
-  geom_sf(data = countypvalues %>% filter(!is.na(meanYield)), aes(fill = meanYield)) +
+  geom_sf(data = countypvalues %>% dplyr::filter(!is.na(meanYield)), aes(fill = meanYield)) +
   
   scale_fill_gradientn(colours = rev(viridis(6))) +
   labs(fill = paste("Mean yield\n(g m\u207b\u00b2 season\u207b\u00b9)", sep = "")) +
@@ -581,7 +586,7 @@ plot3 <- ggplot() +
 
 plot4 <- ggplot() +
   geom_sf(data = countypvalues) +
-  geom_sf(data = countypvalues %>% filter(!is.na(meanGPP)), aes(fill = meanGPP)) +
+  geom_sf(data = countypvalues %>% dplyr::filter(!is.na(meanGPP)), aes(fill = meanGPP)) +
   scale_fill_gradientn(colours = rev(viridis(6))) +
   labs(fill = paste("Mean Cumulative GPP\n(g C m\u207b\u00b2 year\u207b\u00b9)", sep = "")) +
   theme_bw() +
@@ -594,7 +599,7 @@ plot4 <- ggplot() +
 
 plot5 <- ggplot() +
   geom_sf(data = countypvalues) +
-  geom_sf(data = countypvalues %>% filter(!is.na(meanarea)), aes(fill = meanarea)) +
+  geom_sf(data = countypvalues %>% dplyr::filter(!is.na(meanarea)), aes(fill = meanarea)) +
   scale_fill_gradientn(colours = rev(viridis(6))) +
   labs(fill = paste("Planted Area \n (Acre)", sep = "")) +
   theme_bw() +
@@ -607,7 +612,7 @@ plot5 <- ggplot() +
 plot6 <- ggplot() +
   geom_sf(data = countypvalues) +
   
-  geom_sf(data = countypvalues %>% filter(!is.na(pcorrelatiopvalue)), aes(fill = pcorrelatiopvalue), size =3) +
+  geom_sf(data = countypvalues %>% dplyr::filter(!is.na(pcorrelatiopvalue)), aes(fill = pcorrelatiopvalue), size =3) +
   
   scale_fill_manual(values = c("negative insignificant" = "#FFDB6D", "negative significant"="#D16103","positive insignificant" ="#52854C","positive significant" = "#4E84C4")) +
   theme_bw() +
@@ -636,12 +641,7 @@ ggsave("C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Figure/mapgppyieldsign
 
 
 ##allrasterscumulativestack_meansddf = VPM_InterannaualGraph
-library(ggpubr)
-library(ggtext)
-library(ggplot2)
-library(trend)
-library(remotes)
-library(lterdatasampler)
+
 
 # Define the file path
 file_path <- "C:/Users/rbmahbub/Documents/Data/YieldData/Harvested_ACre_Rice_Arkansas.csv"
@@ -657,7 +657,7 @@ stateyield <- stateyield %>%
 stateyield$yield <- stateyield$yield * 0.111111
 
 stateyield_selected <- stateyield %>%
-  select(Year, yield)
+  dplyr::select(Year, yield)
 allrasterscumulativestack_meansddf$Year<-allrasterscumulativestack_meansddf$year
 
 GPPyieldmerge <- merge(allrasterscumulativestack_meansddf, stateyield_selected, by = "Year")
@@ -670,12 +670,13 @@ senslopegpp<-sens.slope(GPPyieldmerge$meancumgpp8dayagg)$estimates["Sen's slope"
 ggscatter(GPPyieldmerge, x = "year", y = "yield", add = "reg.line", size = 7) +
   geom_point(size = 7) +
   geom_smooth(method = "lm", se = FALSE, color = "blue") +
-  stat_cor(aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")), label.x = 2016, label.y = 400, size = 8) +
-  stat_regline_equation(label.x = 2016, label.y = 500, size = 8) +
+  stat_cor(aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")), 
+           label.x = 2013.8, label.y = 400, size = 8) +
+  stat_regline_equation(label.x = 2013.8, label.y = 500, size = 8) +
   scale_x_continuous(breaks = seq(2008, 2020, by = 2)) +
   scale_y_continuous(limits = c(0, 900), breaks = seq(0, 900, by = 100)) + 
   geom_text(x = 2016, y = 300, label = paste("Mann-Kendall p-value =", round(mktestpvalueyield, 4)), size = 8) +
-  geom_text(x = 2016, y = 200, label = paste("Sens Slope =", round(senslopeyield, 2)), size = 8) +
+  geom_text(x = 2015.1, y = 200, label = paste("Sens Slope =", round(senslopeyield, 2)), size = 8) +
   xlab("Year") +
   font("xy.text", size = 24) +
   font("xlab", size = 24) +
@@ -745,4 +746,425 @@ for (i in seq_along(labels)) {
 
 # View the performance metrics
 View(top5dataframe)
+
+
+### YIELD in the years 2010 and 2011
+
+# Calculate the mean GPP for all years
+mean_yield_all_years <- mean(stateyield$yield)
+
+# Calculate the percentage differences in GPP for each year compared to all years
+diff_percent_yield_2010 <- ((mean_yield_all_years - stateyield$yield[stateyield$Year == 2010]) / mean_yield_all_years) * 100
+diff_percent_yield_2011 <- ((mean_yield_all_years - stateyield$yield[stateyield$Year == 2011]) / mean_yield_all_years) * 100
+
+# Print the percentage differences
+cat("Difference in yield for 2010 compared to all years:", diff_percent_yield_2010, "\n")
+cat("Difference in yield for 2011 compared to all years:", diff_percent_yield_2011, "\n")
+
+
+################################################
+#############GPP-0.05-Topt 30 ##################
+################################################
+# Define the directories containing raster data
+directories <- c(
+  "C:/Users/rbmahbub/Documents/Data/GeospatialData/CumulativeVPM/CumulativeVPMRasterPolygonCoverageFilter_0_05_30",
+  "C:/Users/rbmahbub/Documents/Data/GeospatialData/CumulativeVPM/CumulativeVPM_0_05_30",
+  "C:/Users/rbmahbub/Documents/Data/GeospatialData/CumulativeVPM/CumulativeVPM"
+)
+
+# Define years for processing
+years <- 2008:2020
+
+# Initialize storage for raster lists
+raster_lists <- vector("list", length(directories))
+names(raster_lists) <- c("RasterCoverageFilter", "Raster_0_05_30", "Raster")
+
+# Process rasters for each directory
+for (dir_index in seq_along(directories)) {
+  # Get the current directory
+  path <- directories[dir_index]
+  
+  # Get the list of .tif files
+  image_names <- list.files(path = path, pattern = '\\.tif$', full.names = FALSE)
+  
+  # Check the number of images matches the years
+  if (length(image_names) != length(years)) {
+    warning(paste("Mismatch between images and years in directory:", path))
+  }
+  
+  # Initialize list to store rasters for the directory
+  raster_list <- vector("list", length(years))
+  names(raster_list) <- years
+  
+  # Read rasters
+  for (i in seq_along(years)) {
+    file_path <- file.path(path, image_names[i])
+    if (file.exists(file_path)) {
+      raster_list[[i]] <- raster(file_path)
+    } else {
+      warning(paste("File not found:", file_path))
+    }
+  }
+  
+  # Store in the main raster list
+  raster_lists[[dir_index]] <- raster_list
+}
+###raster_lists[[1]] = filtered 05 30 50%
+###raster_lists[[2]] = 05 30
+###raster_lists[[3]] = calibrated all pixels
+##List of shapefile
+## Yield data in csv format
+yield20082020<-read.csv("C:/Users/rbmahbub/Documents/Data/YieldData/ArkansasCounty2008_2020lb_acre_areayield.csv")
+## Extract COUNTYFP from County.ANSI 9 (Merge yield data with county shapefile based on COUNTYFP)
+yield20082020$COUNTYFP<-yield20082020$County.ANSI
+## Pad COUNTYFP with zeros 45 yto 045
+yield20082020$COUNTYFP<-str_pad(yield20082020$COUNTYFP, 3, pad = "0")
+## Remove commas from the Value column and convert it to numeric
+yield20082020$Yield<-as.numeric(gsub(",", "", yield20082020$Value))
+
+for(i in unique(yield20082020$Year)) {
+  nam <- paste("yield", i, sep = ".")
+  assign(nam, yield20082020[yield20082020$Year==i,])
+}
+yieldlist<-list(yield.2008, yield.2009, yield.2010, yield.2011, yield.2012, yield.2013, yield.2014, yield.2015, yield.2016, yield.2017, yield.2018, yield.2019, yield.2020)
+
+## Read the arkansas shpaefile
+arkansasshp <- st_read(
+  "C:/Users/rbmahbub/Documents/Data/GeospatialData/ArkansasShapefile/tl_2016_05_cousub/tl_2016_05_cousub.shp")
+### Make a county map
+county <- aggregate(arkansasshp["COUNTYFP"], by = list(diss = arkansasshp$COUNTYFP), 
+                    FUN = function(x)x[1], do_union = TRUE)
+
+##County with one variable
+countyonevariable <- county[ ,c(2,3)]
+
+yieldlistshp<-vector("list", 13)
+for (i in 1:13) {
+  yieldlistshp[[i]] <- merge(countyonevariable, yieldlist[i], by='COUNTYFP')
+  yieldlistshp[[i]] <- yieldlistshp[[i]][ ,c("COUNTYFP", "Year", "Yield")]
+  yieldlistshp[[i]] <- st_transform(yieldlistshp[[i]], crs(raster_lists[[1]][[i]])) #st_transform() is then used to transform the spatial object yieldlistshp[[i]] to the CRS of the raster object.
+} 
+# Check CRS for all files
+for (i in 1:13) {
+  cat("File", i, ":", st_crs(yieldlistshp[[i]]) == st_crs(raster_lists[[1]][[i]]), "\n")
+}
+### Extract the rasters or raster values on all the counties
+extractedvalueslist<-vector("list", 13)
+extractedcombinelist<-vector("list", 13)
+###29 counties and 13 years
+for (i in 1:13) {
+  extractedvalueslist[[i]] <- terra::extract(raster_lists[[1]][[i]], yieldlistshp[[i]]) ### 29 in each of them
+  extractedcombinelist[[i]]<-c(1:nrow(yieldlistshp[[i]]))
+  extractedcombinelist[[i]]<-as.data.frame(extractedcombinelist[[i]])
+  extractedcombinelist[[i]]$meanGPP<-NA
+}
+for (i in 1: 13){ ### for 13 years
+  for (j in 1: nrow(yieldlistshp[[i]])){ ### 29 counties
+    extractedcombinelist[[i]]$meanGPP[j]<-lapply((extractedvalueslist[[i]][j]), mean, na.rm = TRUE)
+  }
+}
+for (i in 1:13) {
+  yieldlistshp[[i]]$extractedcombine<- c(1:nrow(yieldlistshp[[i]]))
+  names(yieldlistshp[[i]])[names(yieldlistshp[[i]]) == 'extractedcombine'] <- "extractedcombinelist[[i]]"
+}
+##rename the column
+mgppyieldlist<-vector("list", 13)
+for (i in 1:13) {
+  mgppyieldlist[[i]]<-merge(yieldlistshp[[i]], extractedcombinelist[[i]], by='extractedcombinelist[[i]]')
+}
+## Drop the null values
+gppricecountydfnaomit<-vector("list", 13)
+for (i in 1:13) {
+  gppricecountydfnaomit[[i]]<-mgppyieldlist[[i]] %>% drop_na(Yield)
+} 
+## Convert the shapefile to dataframe
+gppricecountydfnaomit_dataframe<-vector("list", 13)
+for (i in 1:13) {
+  gppricecountydfnaomit_dataframe[[i]]<-gppricecountydfnaomit[[i]] %>% st_drop_geometry()
+} 
+
+## Bind the rows convert the list of list to a single dataframe
+gppricecounty<-do.call(rbind, Map(data.frame, gppricecountydfnaomit_dataframe))
+### unit Conversion
+## COnvert the yield to gram ##
+gppricecounty$yieldgm<-(gppricecounty$Yield)*0.112085
+## Convert the gpp to 8 day cumulative (the gpp was giving non numeric argument error so converted to binary operator==)
+gppricecounty$meanGPP<-as.numeric(gppricecounty$meanGPP)
+gppricecounty$gpp_sum_8day<-(gppricecounty$meanGPP)*8
+plot(gppricecounty$gpp_sum_8day, gppricecounty$yieldgm)
+(cor(gppricecounty$gpp_sum_8day, gppricecounty$yieldgm))^2
+Metrics::rmse(gppricecounty$gpp_sum_8day, gppricecounty$yieldgm)
+
+# Fit linear regression model
+model <- lm(yieldgm ~ gpp_sum_8day, data = gppricecounty)
+intercept <- coef(model)[1]
+slope <- coef(model)[2]
+gppricecounty$predictedyield<- intercept+ slope*gppricecounty$gpp_sum_8day
+VPM0530_50r2<-(cor(gppricecounty$gpp_sum_8day, gppricecounty$yieldgm))^2
+VPM0530_50rmse<-Metrics::rmse(gppricecounty$yieldgm, gppricecounty$predictedyield)
+
+
+###
+###raster_lists[[2]] = 05 30
+###
+## Yield data in csv format
+yield20082020<-read.csv("C:/Users/rbmahbub/Documents/Data/YieldData/ArkansasCounty2008_2020lb_acre_areayield.csv")
+## Extract COUNTYFP from County.ANSI 9 (Merge yield data with county shapefile based on COUNTYFP)
+yield20082020$COUNTYFP<-yield20082020$County.ANSI
+## Pad COUNTYFP with zeros 45 yto 045
+yield20082020$COUNTYFP<-str_pad(yield20082020$COUNTYFP, 3, pad = "0")
+## Remove commas from the Value column and convert it to numeric
+yield20082020$Yield<-as.numeric(gsub(",", "", yield20082020$Value))
+
+for(i in unique(yield20082020$Year)) {
+  nam <- paste("yield", i, sep = ".")
+  assign(nam, yield20082020[yield20082020$Year==i,])
+}
+yieldlist<-list(yield.2008, yield.2009, yield.2010, yield.2011, yield.2012, yield.2013, yield.2014, yield.2015, yield.2016, yield.2017, yield.2018, yield.2019, yield.2020)
+
+## Read the arkansas shpaefile
+arkansasshp <- st_read(
+  "C:/Users/rbmahbub/Documents/Data/GeospatialData/ArkansasShapefile/tl_2016_05_cousub/tl_2016_05_cousub.shp")
+### Make a county map
+county <- aggregate(arkansasshp["COUNTYFP"], by = list(diss = arkansasshp$COUNTYFP), 
+                    FUN = function(x)x[1], do_union = TRUE)
+
+##County with one variable
+countyonevariable <- county[ ,c(2,3)]
+
+yieldlistshp<-vector("list", 13)
+for (i in 1:13) {
+  yieldlistshp[[i]] <- merge(countyonevariable, yieldlist[i], by='COUNTYFP')
+  yieldlistshp[[i]] <- yieldlistshp[[i]][ ,c("COUNTYFP", "Year", "Yield")]
+  yieldlistshp[[i]] <- st_transform(yieldlistshp[[i]], crs(raster_lists[[2]][[i]])) #st_transform() is then used to transform the spatial object yieldlistshp[[i]] to the CRS of the raster object.
+} 
+# Check CRS for all files
+for (i in 1:13) {
+  cat("File", i, ":", st_crs(yieldlistshp[[i]]) == st_crs(raster_lists[[2]][[i]]), "\n")
+}
+### Extract the rasters or raster values on all the counties
+extractedvalueslist<-vector("list", 13)
+extractedcombinelist<-vector("list", 13)
+###29 counties and 13 years
+for (i in 1:13) {
+  extractedvalueslist[[i]] <- terra::extract(raster_lists[[2]][[i]], yieldlistshp[[i]]) ### 29 in each of them
+  extractedcombinelist[[i]]<-c(1:nrow(yieldlistshp[[i]]))
+  extractedcombinelist[[i]]<-as.data.frame(extractedcombinelist[[i]])
+  extractedcombinelist[[i]]$meanGPP<-NA
+}
+for (i in 1: 13){ ### for 13 years
+  for (j in 1: nrow(yieldlistshp[[i]])){ ### 29 counties
+    extractedcombinelist[[i]]$meanGPP[j]<-lapply((extractedvalueslist[[i]][j]), mean, na.rm = TRUE)
+  }
+}
+for (i in 1:13) {
+  yieldlistshp[[i]]$extractedcombine<- c(1:nrow(yieldlistshp[[i]]))
+  names(yieldlistshp[[i]])[names(yieldlistshp[[i]]) == 'extractedcombine'] <- "extractedcombinelist[[i]]"
+}
+##rename the column
+mgppyieldlist<-vector("list", 13)
+for (i in 1:13) {
+  mgppyieldlist[[i]]<-merge(yieldlistshp[[i]], extractedcombinelist[[i]], by='extractedcombinelist[[i]]')
+}
+## Drop the null values
+gppricecountydfnaomit<-vector("list", 13)
+for (i in 1:13) {
+  gppricecountydfnaomit[[i]]<-mgppyieldlist[[i]] %>% drop_na(Yield)
+} 
+## Convert the shapefile to dataframe
+gppricecountydfnaomit_dataframe<-vector("list", 13)
+for (i in 1:13) {
+  gppricecountydfnaomit_dataframe[[i]]<-gppricecountydfnaomit[[i]] %>% st_drop_geometry()
+} 
+
+## Bind the rows convert the list of list to a single dataframe
+gppricecounty<-do.call(rbind, Map(data.frame, gppricecountydfnaomit_dataframe))
+### unit Conversion
+## COnvert the yield to gram ##
+gppricecounty$yieldgm<-(gppricecounty$Yield)*0.112085
+## Convert the gpp to 8 day cumulative (the gpp was giving non numeric argument error so converted to binary operator==)
+gppricecounty$meanGPP<-as.numeric(gppricecounty$meanGPP)
+gppricecounty$gpp_sum_8day<-(gppricecounty$meanGPP)*8
+plot(gppricecounty$gpp_sum_8day, gppricecounty$yieldgm)
+(cor(gppricecounty$gpp_sum_8day, gppricecounty$yieldgm))^2
+Metrics::rmse(gppricecounty$gpp_sum_8day, gppricecounty$yieldgm)
+
+# Fit linear regression model
+model <- lm(yieldgm ~ gpp_sum_8day, data = gppricecounty)
+intercept <- coef(model)[1]
+slope <- coef(model)[2]
+gppricecounty$predictedyield<- intercept+ slope*gppricecounty$gpp_sum_8day
+VPM0530r2<-(cor(gppricecounty$gpp_sum_8day, gppricecounty$yieldgm))^2
+VPM053050rmse<-Metrics::rmse(gppricecounty$yieldgm, gppricecounty$predictedyield)
+
+
+
+###raster_lists[[3]] = calibrated all pixels
+##List of shapefile
+## Yield data in csv format
+yield20082020<-read.csv("C:/Users/rbmahbub/Documents/Data/YieldData/ArkansasCounty2008_2020lb_acre_areayield.csv")
+## Extract COUNTYFP from County.ANSI 9 (Merge yield data with county shapefile based on COUNTYFP)
+yield20082020$COUNTYFP<-yield20082020$County.ANSI
+## Pad COUNTYFP with zeros 45 yto 045
+yield20082020$COUNTYFP<-str_pad(yield20082020$COUNTYFP, 3, pad = "0")
+## Remove commas from the Value column and convert it to numeric
+yield20082020$Yield<-as.numeric(gsub(",", "", yield20082020$Value))
+
+for(i in unique(yield20082020$Year)) {
+  nam <- paste("yield", i, sep = ".")
+  assign(nam, yield20082020[yield20082020$Year==i,])
+}
+yieldlist<-list(yield.2008, yield.2009, yield.2010, yield.2011, yield.2012, yield.2013, yield.2014, yield.2015, yield.2016, yield.2017, yield.2018, yield.2019, yield.2020)
+
+## Read the arkansas shpaefile
+arkansasshp <- st_read(
+  "C:/Users/rbmahbub/Documents/Data/GeospatialData/ArkansasShapefile/tl_2016_05_cousub/tl_2016_05_cousub.shp")
+### Make a county map
+county <- aggregate(arkansasshp["COUNTYFP"], by = list(diss = arkansasshp$COUNTYFP), 
+                    FUN = function(x)x[1], do_union = TRUE)
+
+##County with one variable
+countyonevariable <- county[ ,c(2,3)]
+
+yieldlistshp<-vector("list", 13)
+for (i in 1:13) {
+  yieldlistshp[[i]] <- merge(countyonevariable, yieldlist[i], by='COUNTYFP')
+  yieldlistshp[[i]] <- yieldlistshp[[i]][ ,c("COUNTYFP", "Year", "Yield")]
+  yieldlistshp[[i]] <- st_transform(yieldlistshp[[i]], crs(raster_lists[[3]][[i]])) #st_transform() is then used to transform the spatial object yieldlistshp[[i]] to the CRS of the raster object.
+} 
+# Check CRS for all files
+for (i in 1:13) {
+  cat("File", i, ":", st_crs(yieldlistshp[[i]]) == st_crs(raster_lists[[3]][[i]]), "\n")
+}
+### Extract the rasters or raster values on all the counties
+extractedvalueslist<-vector("list", 13)
+extractedcombinelist<-vector("list", 13)
+###29 counties and 13 years
+for (i in 1:13) {
+  extractedvalueslist[[i]] <- terra::extract(raster_lists[[3]][[i]], yieldlistshp[[i]]) ### 29 in each of them
+  extractedcombinelist[[i]]<-c(1:nrow(yieldlistshp[[i]]))
+  extractedcombinelist[[i]]<-as.data.frame(extractedcombinelist[[i]])
+  extractedcombinelist[[i]]$meanGPP<-NA
+}
+for (i in 1: 13){ ### for 13 years
+  for (j in 1: nrow(yieldlistshp[[i]])){ ### 29 counties
+    extractedcombinelist[[i]]$meanGPP[j]<-lapply((extractedvalueslist[[i]][j]), mean, na.rm = TRUE)
+  }
+}
+for (i in 1:13) {
+  yieldlistshp[[i]]$extractedcombine<- c(1:nrow(yieldlistshp[[i]]))
+  names(yieldlistshp[[i]])[names(yieldlistshp[[i]]) == 'extractedcombine'] <- "extractedcombinelist[[i]]"
+}
+##rename the column
+mgppyieldlist<-vector("list", 13)
+for (i in 1:13) {
+  mgppyieldlist[[i]]<-merge(yieldlistshp[[i]], extractedcombinelist[[i]], by='extractedcombinelist[[i]]')
+}
+## Drop the null values
+gppricecountydfnaomit<-vector("list", 13)
+for (i in 1:13) {
+  gppricecountydfnaomit[[i]]<-mgppyieldlist[[i]] %>% drop_na(Yield)
+} 
+## Convert the shapefile to dataframe
+gppricecountydfnaomit_dataframe<-vector("list", 13)
+for (i in 1:13) {
+  gppricecountydfnaomit_dataframe[[i]]<-gppricecountydfnaomit[[i]] %>% st_drop_geometry()
+} 
+
+## Bind the rows convert the list of list to a single dataframe
+gppricecounty<-do.call(rbind, Map(data.frame, gppricecountydfnaomit_dataframe))
+### unit Conversion
+## COnvert the yield to gram ##
+gppricecounty$yieldgm<-(gppricecounty$Yield)*0.112085
+## Convert the gpp to 8 day cumulative (the gpp was giving non numeric argument error so converted to binary operator==)
+gppricecounty$meanGPP<-as.numeric(gppricecounty$meanGPP)
+gppricecounty$gpp_sum_8day<-(gppricecounty$meanGPP)*8
+plot(gppricecounty$gpp_sum_8day, gppricecounty$yieldgm)
+(cor(gppricecounty$gpp_sum_8day, gppricecounty$yieldgm))^2
+(cor(gppricecounty$gpp_sum_8day, gppricecounty$yieldgm))^2
+Metrics::rmse(gppricecounty$gpp_sum_8day, gppricecounty$yieldgm)
+
+
+# Fit linear regression model
+model <- lm(yieldgm ~ gpp_sum_8day, data = gppricecounty)
+intercept <- coef(model)[1]
+slope <- coef(model)[2]
+gppricecounty$predictedyield<- intercept+ slope*gppricecounty$gpp_sum_8day
+VPMcalibr2<-(cor(gppricecounty$gpp_sum_8day, gppricecounty$yieldgm))^2
+VPMcalibrmse<-Metrics::rmse(gppricecounty$yieldgm, gppricecounty$predictedyield)
+
+VPMcalibrmse
+
+#######################################
+# Create a table with the results
+########################################
+VPMcalib50r2
+VPMcalib50rmse
+
+VPMcalibr2
+VPMcalibrmse
+
+VPM0530r2
+VPM053050rmse
+
+VPM0530_50r2
+VPM0530_50rmse
+
+
+
+
+
+# Calculate R-squared and RMSE
+VPMcalibr2 <- round((VPMcalibr2), 4)
+VPMcalibrmse <- round((VPMcalibrmse), 4)
+
+VPMcalib50r2 <- round((VPMcalib50r2), 4)
+VPMcalib50rmse <- round((VPMcalib50rmse), 4)
+
+VPM0530_50r2 <- round((VPM0530_50r2), 4)
+VPM0530_50rmse <- round((VPM0530_50rmse), 4)
+
+VPM0530r2 <- round((VPM0530r2), 4)
+VPM053050rmse <- round((VPM053050rmse),4)
+
+# Create a table with the results
+result_table <- data.frame(
+  ModelName = c("VPMcalibr", "VPMcalib50", "VPM0530_50", "VPM0530"),
+  R2 = c(VPMcalibr2, VPMcalib50r2, VPM0530_50r2, VPM0530r2),
+  RMSE = c(VPMcalibrmse, VPMcalib50rmse, VPM0530_50rmse, VPM053050rmse)
+)
+
+# Print the result table
+print(result_table)
+file_path <- "C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Figure/result_table_yield.csv"
+write.csv(result_table, file = file_path, row.names = FALSE)
+
+###
+# Function to calculate percentage improvement
+improve_rate <- function(new, old) {
+  return(((new - old)))
+}
+
+# Calculate improvement rates
+improve_VPM0530_to_VPMcalibr_R2 <- improve_rate(VPMcalibr2, VPM0530r2)
+improve_VPM0530_to_VPMcalibr_RMSE <- improve_rate(VPMcalibrmse, VPM053050rmse)
+
+improve_VPM0530_to_VPM0530_50_R2 <- improve_rate(VPM0530_50r2, VPM0530r2)
+improve_VPM0530_to_VPM0530_50_RMSE <- improve_rate(VPM0530_50rmse, VPM053050rmse)
+
+improve_VPM0530_to_VPMcalib50_R2 <- improve_rate(VPMcalib50r2, VPM0530r2)
+improve_VPM0530_to_VPMcalib50_RMSE <- improve_rate(VPMcalib50rmse, VPM053050rmse)
+
+# Print results
+cat("Improvement rate from VPM0530 to VPMcalibr:\n",
+    "R2:", round(improve_VPM0530_to_VPMcalibr_R2, 5), "%\n",
+    "RMSE:", round(improve_VPM0530_to_VPMcalibr_RMSE, 5), "%\n\n")
+
+cat("Improvement rate from VPM0530 to VPM0530_50:\n",
+    "R2:", round(improve_VPM0530_to_VPM0530_50_R2, 5), "%\n",
+    "RMSE:", round(improve_VPM0530_to_VPM0530_50_RMSE, 5), "%\n\n")
+
+cat("Improvement rate from VPM0530 to VPMcalib50:\n",
+    "R2:", round(improve_VPM0530_to_VPMcalib50_R2, 5), "%\n",
+    "RMSE:", round(improve_VPM0530_to_VPMcalib50_RMSE, 5), "%\n")
 

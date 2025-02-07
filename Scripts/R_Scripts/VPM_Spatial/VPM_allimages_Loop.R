@@ -1,4 +1,4 @@
-### calculate all the PVPM images using one script
+### calculate all the VPM images using one script
 
 ## Load the libraries
 library(raster)

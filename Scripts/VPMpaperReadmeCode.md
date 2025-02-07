@@ -1,7 +1,8 @@
 # Script flow: This is how the scripts will be run
-1. Run google earth engine scripts 2015-2018 to obtain the EVI and LSWI values. The EVI will be used to derive FPAR, and LSWI will be used to derive Ws. 
+1. Run google earth engine scripts 2015-2018 to obtain the EVI and LSWI values. The EVI will be used to derive FPAR, and LSWI will be used to derive Ws. in 
 Google drive folder:Satellite-SiteCalibrationCSV [all the excel sheets will be exported here]
 Directory of the satellite data in local directory: "C:/Users/rbmahbub/Box/Research/Data/VPM/SatelliteDataForSiteAnalysis"
+Bring 
 
 2. Run the SiteScaleAnalysis_DataReadingMerging.R and Function.R script to find the calibrated values and use them in the google earth engine code. In the beginning you will have these values. 
 Directory of the site scale EC data: "C:/Users/rbmahbub/Box/Courses/Spring2022/BENG5963 ECData_otherRiceSites/Rice Data_Research Group_05-23-2022.xlsx"
@@ -12,8 +13,13 @@ Directory of the site scale EC data: "C:/Users/rbmahbub/Box/Courses/Spring2022/B
  4. Plot the of the cumulative GPP, 
  5. Show the cumulative GPP using site-calibrated values are better than GPP using 0.05 and 30 deg Topt
     
-Insitu calibrated LUEmax value: 0.06512821
-Insitu calibrated Topt value: 31.79615 
+<!-- Insitu calibrated LUEmax value: 0.06512821
+Insitu calibrated Topt value: 31.79615  --> This mistake happened due to the misplacement of OF6 and OF5 in gee
+
+Insitu calibrated LUEmax value: 0.061
+Insitu calibrated Topt value: 30.671 
+
+
 
 3. Scripts run in google earth engine data: Export the images in relevant folders, The satellite VPM calculation is done in the script but if you want. Even though we run the script using the final topt and luemax. But the function script in R tells us the right parameter values. 
 #Run and export scripts from 2015-2018 for site scale data export
@@ -22,12 +28,18 @@ Data required for google earth engine:
 Name of the directory: 
 5. Do not copy paste the whole script for 2015 -2018 (Copy paste the code before the part of site-calibrated information for the scripts 2015-2018), because they have the site csv file export details.
 Also from copying 2020 you will copy paste the import geometry part too. The region of geometry comes from the 2020 year
+
+The latest run is based on luemax 0.05 and 30 deg celsius. Run the scripts 
 Sitecalibration factors: LUEmax and Topt 
 Site Scale analysis
-// calibrated luemax = 0.7822549 (0.06512821*12.011 =0.7822549)
-// calibrated topt = 29.61 deg celsius
- var luemax = 0.7822549
- var topt = 31.79615
+// calibrated luemax = 0.732671 (0.061*12.011 =0.732671)
+// calibrated topt = 30.671  deg celsius
+ var luemax = 0.732671
+ var topt = 30.671
+
+ biome specific luemax = 0.60055 (0.05*12.011)
+ biome specific topt = 30
+
 
 Exported Directory VPM images in google drive: CumulativeVPM
 Exported Images of other features: VPMDriver
@@ -37,9 +49,12 @@ So the directory folder of the raster images are changed
 
 
 ##Modeling script:
+Varibles = sitesatellitemergedDATA (SiteScaleAnalysis_DataReadingMerging.R script)
 1. Plot scatterplot
 2. Plot Timeseries performance of VPM spatial and site
 3. Plot residual plots
+4. VPM performance based on seasonal scale
+
 4. Project the rasters of EVI, LSWI and temp based on the projection of VPM
 
 
@@ -74,6 +89,16 @@ Figure Exported R version: "C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Fi
     VPM site: sitesatellitemergedDATA$GPP_0_06512_31_79
     VPM spatial: gpp
 3. ModeledPVPMVPM_satelliteProcessing.R dataframe sitesatellitemergedDATA
+    Plot the scatter plot
+    plot the GPP~Yield relationship
+    Yearly performance
+    Seasonal Performance
+    Mixed Pixel effect: 
+        The raster image is from 2012 which has all the image can calculates the percentage with weight function
+    Yield data were obtained from Ben's mail and file was created 16siteyearYield. The common column was siteyear.x
+
+
+
 4. AllDriverinOneScript-Projecting500.R:Spatial correlation here. 
     The exported images from different directories are read here. 
     Setting directory, stacking raster, finding the mean
@@ -107,10 +132,35 @@ Figure Exported R version: "C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Fi
 
 6. VPMMeanRasterImageAnalysis2008_2020.R
     Exports the filtered raster images at the end
+    Regionbased analysis
+
 7. VPMYieldGPP_CountyMaps_Yearwise.R
+    Read the raster files
+    Yield gm conversion by multiplying ti by 0.112085
+    
+
+    Plot the relationship between raster and yield
+
+    Do the automate process for the other directories of rasters
+
+
 8. VPM_InterannualGraph.R
 9. Distributioncheck50percentricepixelversusfullricepixel
     Checks the distribution of GPP in filtered raster of complete GPP and fractioned GPP
+    Load the library
+    read the raster files and stack them read the shapefile
+    Convert the raster files to rast objects
+    convert the raster files to dataframes and multiply it by 8
+
+    Read the raster files with 50% roi
+
+    cumulative_raster_df_coverage= 50% coverage
+    cumulative_raster_df_vpm = all pixels
+
+    Add source and rename columns and combine them 
+
+    From the 2012 image find the coverage percentage of the pixels on the 
+
 
 
 
@@ -176,4 +226,10 @@ We do not know the true LUEmax Topt for the whole rice growing region. However, 
 
 
 
+This was checked by opening 2012 image on GEE and QGIS, we matched the cumulative GPP to find the right pixel and found the coordinates of those pixels
+Points needs to be to find the pixel that represents the field
+USOF1 = Point (-90.05202, 35.73629)
+USOF3 = Point 
 
+var  OF5  =ee.Geometry.Point([-90.0403,35.7333])
+var  OF6  =ee.Geometry.Point([-90.0406,35.7297])

@@ -765,6 +765,9 @@ satellitecombined_data <- do.call(rbind, data_list)
 # Reset row names to sequential integers starting from 1
 rownames(satellitecombined_data) <- NULL
 
+#satellitecombined_data dataframe has the information of satellite information
+satellitecombined_data
+
 # Concatenate siteyear and date to create siteyeardate column
 sitecombineddata$siteyeardate <- paste(sitecombineddata$siteyear, sitecombineddata$Date, sep = "")
 satellitecombined_data$siteyeardate <- paste(satellitecombined_data$siteyear, satellitecombined_data$date, sep = "")
@@ -797,9 +800,10 @@ sitecombineddata$DAP <-sitecombineddata$doy - sitecombineddata$DOP
 # Merge dataframes based on the siteyeardate column
 
 nrow(sitecombineddata)
-View(satellitecombined_data)
 sitesatellitemergedDATA <- merge(sitecombineddata, satellitecombined_data, by = "siteyeardate")
-sitesatellitemergedDATA
+# Perform a full outer join on sitecombineddata and satellitecombined_data by "siteyeardate"
+sitesatellitemergedDATAGPPng <- merge(sitecombineddata, satellitecombined_data, by = "siteyeardate", all.y = TRUE)
+
 
 # Define the function to calculate Ts_site
 calculate_Ts <- function(T, Tmin, Tmax, Topt) {
@@ -968,4 +972,45 @@ concatenated_data <- grouped_data_site %>%
 
 # Print the concatenated data
 print(concatenated_data$concatenated_row)
+
+
+### Calculation of NG GPP 
+sitesatellitemergedDATAGPPng
+# Create a new column 'season' in sitesatellitemergedDATA where the value is "growing" if 'DAP' has a value and "non_growing" if 'DAP' is NA
+sitesatellitemergedDATAGPPng$season <- ifelse(is.na(sitesatellitemergedDATAGPPng$DAP), "non_growing", "growing")
+
+library(dplyr)
+
+# Group by 'siteyear.y' and summarize 'GPP' for each 'season'
+gpp_summary <- sitesatellitemergedDATAGPPng %>%
+  group_by(siteyear.y) %>%  # Group data by the 'siteyear.y' column
+  summarize(
+    gpp_growing = sum(gpp[season == "growing"]),  # Calculate the sum of 'gpp' where the season is "growing"
+    gpp_non_growing = sum(gpp[season == "non_growing"]),  # Calculate the sum of 'gpp' where the season is "non_growing"
+    gpp_total = gpp_growing + gpp_non_growing,  # Calculate the total 'gpp' by adding 'gpp_growing' and 'gpp_non_growing'
+    gpp_growing_ratio = (gpp_growing / (gpp_growing + gpp_non_growing)) * 100  # Calculate the ratio of 'gpp_growing' to 'gpp_total' in percentage
+  )
+
+# View the summary
+print(gpp_summary)
+
+
+# Calculate max, mean, and min of the 'gpp_growing_ratio' column
+max_gpp_growing_ratio <- max(gpp_summary$gpp_growing_ratio)  # Maximum value of 'gpp_growing_ratio'
+mean_gpp_growing_ratio <- mean(gpp_summary$gpp_growing_ratio)  # Mean value of 'gpp_growing_ratio'
+min_gpp_growing_ratio <- min(gpp_summary$gpp_growing_ratio)  # Minimum value of 'gpp_growing_ratio'
+
+# Find the siteyear.x corresponding to max, mean, and min 'gpp_growing_ratio'
+siteyear_max <- gpp_summary$siteyear.y[which.max(gpp_summary$gpp_growing_ratio)]  # Siteyear with max 'gpp_growing_ratio'
+siteyear_min <- gpp_summary$siteyear.y[which.min(gpp_summary$gpp_growing_ratio)]  # Siteyear with min 'gpp_growing_ratio']
+
+# Find the siteyear closest to the mean value
+mean_diff <- abs(gpp_summary$gpp_growing_ratio - mean_gpp_growing_ratio)
+siteyear_mean <- gpp_summary$siteyear.y[which.min(mean_diff)]  # Siteyear closest to mean 'gpp_growing_ratio'
+
+# Print the results
+cat("Siteyear with Max GPP Growing Ratio:", siteyear_max, "with ratio", max_gpp_growing_ratio, "\n")
+cat("Siteyear with Mean GPP Growing Ratio:", siteyear_mean, "with ratio", mean_gpp_growing_ratio, "\n")
+cat("Siteyear with Min GPP Growing Ratio:", siteyear_min, "with ratio", min_gpp_growing_ratio, "\n")
+
 
