@@ -110,7 +110,7 @@ max(sitesatellitemergedDATA$gpp)
 
 
 ###VPM thesis
-separate_DF<-sitesatellitemergedDATA%>% select(GPP_site, GPP_0_06512_31_79, gpp, DAP)
+separate_DF<-sitesatellitemergedDATA%>% dplyr::select(GPP_site, GPP_0_06512_31_79, gpp, DAP)
 df_long <- melt(data = separate_DF, 
                 id.vars = c("DAP"),
                 variable.name = "Model",
@@ -119,11 +119,11 @@ df_long <- melt(data = separate_DF,
 # Use spread to convert back to the original wide format
 # Filter rows where Model is "GPP_site"
 filtered_df1 <- df_long %>%
-  filter(Model == "GPP_site")
+  dplyr::filter(Model == "GPP_site")
 filtered_df2 <- df_long %>%
-  filter(Model == "GPPvpmsite")
+  dplyr::filter(Model == "GPPvpmsite")
 filtered_df3 <- df_long %>%
-  filter(Model == "gpp")
+  dplyr::filter(Model == "gpp")
 
 colnames(filtered_df1)
 colnames(filtered_df2)
@@ -284,7 +284,7 @@ site_mixedpixel_metrics <- site_mixedpixel_metrics %>%
   dplyr::select(-max_weight, -max_weight_cell, -gpp_sum)
 output_file_path <- "C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Figure/Site_metrics_formatted.csv"
 write.csv(site_mixedpixel_metrics, file = output_file_path, row.names = FALSE)
-
+plot(site_mixedpixel_metrics$mixedpixelratio, site_mixedpixel_metrics$GPPsiteVPMR2)
 
 #################################################
 ######LAI##########################################
@@ -340,7 +340,7 @@ sitesatellitemergedDATALAI <- sitesatellitemergedDATA %>%
 sitesatellitemergedDATALAI$site.x <- gsub("US([A-Za-z]+)(.*)", "US-\\1\\2", sitesatellitemergedDATALAI$site.x)
 
 sitesatellitemergedDATALAI<-sitesatellitemergedDATALAI %>%
-  filter(site.x != "US-HRA")
+  dplyr::filter(site.x != "US-HRA")
 
 # Assuming sitesatellitemergedDATALAI contains avg_Lai, residualsitevpm, DOY, and site.x columns
 ggplot(sitesatellitemergedDATALAI, aes(x = avg_Lai, y = residualsitevpm, color = DAP)) +
@@ -418,17 +418,17 @@ library(Metrics)
 library(patchwork)
 
 # Calculate RMSE, MAE, and Bias for each comparison
-rmse_sum_GPP_site <- rmse(sitesatellitemergedDATAfiltered$sum_GPP_site, sitesatellitemergedDATAfiltered$Yieldtha_1_gm2)
-mae_sum_GPP_site <- mae(sitesatellitemergedDATAfiltered$sum_GPP_site, sitesatellitemergedDATAfiltered$Yieldtha_1_gm2)
-bias_sum_GPP_site <- bias(sitesatellitemergedDATAfiltered$sum_GPP_site, sitesatellitemergedDATAfiltered$Yieldtha_1_gm2)
+rmse_sum_GPP_site <- Metrics::rmse(sitesatellitemergedDATAfiltered$sum_GPP_site, sitesatellitemergedDATAfiltered$Yieldtha_1_gm2)
+mae_sum_GPP_site <- Metrics::mae(sitesatellitemergedDATAfiltered$sum_GPP_site, sitesatellitemergedDATAfiltered$Yieldtha_1_gm2)
+bias_sum_GPP_site <- Metrics::bias(sitesatellitemergedDATAfiltered$sum_GPP_site, sitesatellitemergedDATAfiltered$Yieldtha_1_gm2)
 
-rmse_sum_gpp <- rmse(sitesatellitemergedDATAfiltered$sum_gpp, sitesatellitemergedDATAfiltered$Yieldtha_1_gm2)
-mae_sum_gpp <- mae(sitesatellitemergedDATAfiltered$sum_gpp, sitesatellitemergedDATAfiltered$Yieldtha_1_gm2)
-bias_sum_gpp <- bias(sitesatellitemergedDATAfiltered$sum_gpp, sitesatellitemergedDATAfiltered$Yieldtha_1_gm2)
+rmse_sum_gpp <- Metrics::rmse(sitesatellitemergedDATAfiltered$sum_gpp, sitesatellitemergedDATAfiltered$Yieldtha_1_gm2)
+mae_sum_gpp <- Metrics::mae(sitesatellitemergedDATAfiltered$sum_gpp, sitesatellitemergedDATAfiltered$Yieldtha_1_gm2)
+bias_sum_gpp <- Metrics::bias(sitesatellitemergedDATAfiltered$sum_gpp, sitesatellitemergedDATAfiltered$Yieldtha_1_gm2)
 
-rmse_sum_GPP_0_06512_31_79 <- rmse(sitesatellitemergedDATAfiltered$sum_GPP_0_06512_31_79, sitesatellitemergedDATAfiltered$Yieldtha_1_gm2)
-mae_sum_GPP_0_06512_31_79 <- mae(sitesatellitemergedDATAfiltered$sum_GPP_0_06512_31_79, sitesatellitemergedDATAfiltered$Yieldtha_1_gm2)
-bias_sum_GPP_0_06512_31_79 <- bias(sitesatellitemergedDATAfiltered$sum_GPP_0_06512_31_79, sitesatellitemergedDATAfiltered$Yieldtha_1_gm2)
+rmse_sum_GPP_0_06512_31_79 <- Metrics::rmse(sitesatellitemergedDATAfiltered$sum_GPP_0_06512_31_79, sitesatellitemergedDATAfiltered$Yieldtha_1_gm2)
+mae_sum_GPP_0_06512_31_79 <- Metrics::mae(sitesatellitemergedDATAfiltered$sum_GPP_0_06512_31_79, sitesatellitemergedDATAfiltered$Yieldtha_1_gm2)
+bias_sum_GPP_0_06512_31_79 <- Metrics::bias(sitesatellitemergedDATAfiltered$sum_GPP_0_06512_31_79, sitesatellitemergedDATAfiltered$Yieldtha_1_gm2)
 library(dplyr)
 
 # Calculate R² for each model

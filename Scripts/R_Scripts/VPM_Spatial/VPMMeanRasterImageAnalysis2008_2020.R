@@ -1,3 +1,13 @@
+# Load libraries
+library(raster)
+library(tidyverse)
+library(ggplot2)
+library(sf)
+library(ggpubr)
+library(viridis)
+library(terra)
+
+
 ### VPM
 ###Load all the required libraries
 library(raster)
@@ -24,7 +34,6 @@ library(viridis)  # better colors for everyone
 library(ggthemes) # theme_map()
 library(RColorBrewer)
 library(magrittr)
-library(dplyr)
 library(conflicted)
 library(exactextractr)
 library(ggspatial)
@@ -35,6 +44,10 @@ library(osmdata)
 raster_dir <- "C:/Users/rbmahbub/Documents/Data/GeospatialData/CumulativeVPM/CumulativeVPMRasterPolygonCoverageFilter"
 rastlist <- list.files(path = raster_dir, pattern='.tif$', 
                        all.files=TRUE, full.names=FALSE)
+arkansasshp <- st_read(
+  "C:/Users/rbmahbub/Documents/Data/GeospatialData/ArkansasShapefile/CountyShapefileFromArkansasOffice/COUNTY_BOUNDARY.shp"
+)
+
 # Read the shapefile using st_read
 ME2 <- st_read("C:/Users/rbmahbub/Documents/Data/GeospatialData/CumulativeVPM/ME_Shapefile/ME.shp")
 
@@ -80,22 +93,44 @@ my_breaks <- seq(1000, 3000, by = 500)
 nwbrks <- seq(31,36,1)
 nwlbls <- unlist(lapply(nwbrks, function(x) paste(x, "°N")))
 
-cumulativemap<-ggplot()+
-  geom_sf(fill='transparent',data=ME2)+
-  geom_raster(aes(x=x,y=y,fill=mean_8),data=cleaned_cumulativerasdf)+
-  #scale_fill_viridis_c( limits = c(0, 300), option = "turbo", breaks = my_breaks, nameColor, direction = -1, oob = scales::squish)+
-  scale_fill_viridis( option = "turbo", nameColor, direction = -1, 
-                      breaks = my_breaks, 
-                      limits = c(1000, 3000)) +
-  labs(x='Longitude',y='Latitude', color = nameColor)+
-  scale_y_continuous(breaks = seq(34, 36, by=1))+
-  cowplot::theme_cowplot(font_size = 24)+
-  theme(legend.key.width=unit(4,"cm"), legend.spacing.x = unit(1, 'cm'))+
-  theme(axis.text = element_text(size = 25))  +
+# cumulativemap<-ggplot()+
+#   geom_sf(fill='transparent',data=ME2)+
+#   geom_raster(aes(x=x,y=y,fill=mean_8),data=cleaned_cumulativerasdf)+
+#   #scale_fill_viridis_c( limits = c(0, 300), option = "turbo", breaks = my_breaks, nameColor, direction = -1, oob = scales::squish)+
+#   scale_fill_viridis( option = "turbo", nameColor, direction = -1, 
+#                       breaks = my_breaks, 
+#                       limits = c(1000, 3000)) +
+#   labs(x='Longitude',y='Latitude', color = nameColor)+
+#   scale_y_continuous(breaks = seq(34, 36, by=1))+
+#   cowplot::theme_cowplot(font_size = 24)+
+#   theme(legend.key.width=unit(4,"cm"), legend.spacing.x = unit(1, 'cm'))+
+#   theme(axis.text = element_text(size = 25))  +
+#   
+#   ggsn::north(arkansasshp) +
+#   ggsn::scalebar(arkansasshp, dist = 50, dist_unit = "km",st.size=5, height=0.02,
+#                  transform = TRUE, model = "WGS84")
+
+cumulativemap<-ggplot() +
+  geom_sf(fill = 'transparent', data = ME2) +  # Add the shapefile
+  geom_raster(aes(x = x, y = y, fill = mean_8), data = cleaned_cumulativerasdf) +  # Add the raster data
+  scale_fill_viridis(option = "turbo", name = nameColor, direction = -1, 
+                     breaks = my_breaks, limits = c(1000, 3000)) +  # Customize the fill scale
+  labs(x = 'Longitude', y = 'Latitude') +  # Add axis labels
+  scale_y_continuous(breaks = seq(34, 36, by = 1)) +  # Customize y-axis breaks
+  cowplot::theme_cowplot(font_size = 24) +  # Apply a custom theme
+  theme(legend.key.width = unit(4, "cm"), legend.spacing.x = unit(1, 'cm')) +  # Customize legend
+  theme(axis.text = element_text(size = 25)) +  # Customize axis text size
   
-  ggsn::north(arkansasshp) +
-  ggsn::scalebar(arkansasshp, dist = 50, dist_unit = "km",st.size=5, height=0.02,
-                 transform = TRUE, model = "WGS84")
+  # Add scale bar
+  annotation_scale(location = "br", width_hint = 0.5, height = unit(0.5, "cm"),text_cex = 2) +  # Add a scale bar at the bottom-left
+  
+  # Add north arrow
+  annotation_north_arrow(location = "tr", which_north = "true", 
+                         style = north_arrow_fancy_orienteering,
+                         height = unit(2, "cm"),text_cex = 1.2) +  # Add a north arrow at the top-right
+  
+  # Ensure the coordinate system is set to WGS84 (EPSG:4326)
+  coord_sf(crs = 4326)
 
 # Define the breaks for the y-axis to show 34.2, 34.4, 34.6, etc.
 latitude_breaks <- seq(33, 36, by = 0.2)
@@ -118,6 +153,7 @@ cumulativegam
 
 ggsave("C:/Users/rbmahbub/Box/Research/ManuscriptFile/Optimum Air Temperature/Figure/VPMcumulativearrangedsameextent.png", plot=cumulativearranged, height=10, width=22, units="in", dpi=150)
 ggsave("C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Figure/VPMcumulativearranged.png", plot=cumulativearranged, height=10, width=22, units="in", dpi=150)
+
 
 #####Latitude with highest GPP
 # Sort the data frame by 'mean_8' in descending order and select the top 10 rows
@@ -157,7 +193,7 @@ print(sprintf("%.0f", sd_gpp_36_35.5))
 mean_gpp<-mean(cumulativerasdf$mean_8)
 sd_gpp<-sd(cumulativerasdf$mean_8)
 
-print(paste("The spatial distribution of GPP has shown that rice fields located between 33.5° N and 34.5° N have higher GPP values. Mean GPP in this range:", mean_gpp33.534.5))
+print(paste("The spatial distribution of GPP has shown that rice fields located between 33.5° N and 34.5° N have higher GPP values. Mean GPP in this range:", mean_gpp))
 print(paste("At the state scale, in the timeframe between 2008 to 2020, the mean photosynthetic carbon uptake of Arkansas rice fields was :", mean_gpp))
 sd_gpp
 sd_gpp33.534.5
@@ -388,7 +424,7 @@ cumulativegam<-  ggplot(cleaned_cumulativerasdf, aes(x=y, y=mean_8)) +
 cumulativearranged<-ggarrange(cumulativemap, cumulativegam, labels = c("A", "B"),font.label = list(size = 35) , widths = c(1.6,1),
                               common.legend = TRUE, legend = "bottom")
 cumulativearranged
-
+cumulativearranged
 
 # Load necessary libraries
 
@@ -477,7 +513,9 @@ riceproductionregion <- st_read(
 
 # Ensure both datasets are in the same CRS
 riceproductionregion <- st_transform(riceproductionregion, crs(stacked_raster_rast_mean))
-
+arkansasshp <- st_read(
+  "C:/Users/rbmahbub/Documents/Data/GeospatialData/ArkansasShapefile/CountyShapefileFromArkansasOffice/COUNTY_BOUNDARY.shp"
+)
 # Extract raster values for each polygon in the shapefile
 # Fun can be mean, median, sum, etc. depending on how you want to aggregate
 raster_agg <- terra::extract(stacked_raster_rast_mean, riceproductionregion, fun = mean, na.rm = TRUE, exact = TRUE)
@@ -516,8 +554,8 @@ ggplot() +
   # Use viridis color scale for GPP_mean with custom breaks and limits
   scale_fill_viridis_c(option = "magma", 
                        direction = -1, 
-                       breaks = c(1800, 1900, 2000, 2100), 
-                       limits = c(1800, 2100)) +
+                       breaks = c(1600, 1700, 1800, 1900, 2000, 2100), 
+                       limits = c(1650, 2100)) +
   # Add labels and formatting
   labs(fill = expression(atop("Mean Cumulative GPP", "(g C m"^ -2~"year"^ -1~")"))) +
   # Use a clean theme
@@ -601,9 +639,6 @@ counties_in_regions <- st_join(arkansasshp, riceproductionregion, right = TRUE)
 result <- counties_in_regions %>%
   dplyr::select(COUNTY, layer)  # Assuming 'NAME' is the county name and 'layer' is the region name
 
-# View the result
-View(result)
-
 # Filter out rows with NA values in 'layer' column (if needed)
 valid_data <- counties_in_regions %>%
   dplyr::filter(!is.na(layer))
@@ -623,14 +658,10 @@ for (i in 1:nrow(regions_with_counties)) {
 ################################################
 ######Regionbased analysis########
 ################################################
-
-
 # Define the directory containing the EVI files
 evi_dir <- "C:/Users/rbmahbub/Documents/Data/GeospatialData/CumulativeVPM/EVI"
-
 # List all .tif files in the directory
 evi_files <- list.files(evi_dir, pattern = "\\.tif$", full.names = TRUE)
-
 # Read the shapefile
 riceproductionregion <- st_read(
   "C:/Users/rbmahbub/Documents/Data/GeospatialData/ArkansasShapefile/RiceProductionRegions/RiceProductionRegions6regions/RiceProductionRegions.shp"
@@ -646,25 +677,17 @@ if (st_crs(riceproductionregion)$proj4string != raster_crs) {
 
 # Convert sf to SpatVector for compatibility with terra
 riceproductionregion_terra <- terra::vect(riceproductionregion)
-
 # Initialize an empty list to store results
 all_evi_results <- list()
-
 # Loop through each EVI file and calculate mean EVI for each region
-for (evi_file in evi_files) {
-  # Read the raster file
-  evi_raster <- terra::rast(evi_file)
-  
-  # Extract mean EVI values by region
+for (evi_file in evi_files) {# Read the raster file
+  evi_raster <- terra::rast(evi_file) # Extract mean EVI values by region
   mean_evi <- terra::extract(evi_raster, riceproductionregion_terra, fun = mean, na.rm = TRUE)
-  
   # Add region names and the year to the result
   mean_evi$Region <- riceproductionregion$layer
-  
   # Extract the year from the file name (assuming consistent naming)
   year <- gsub(".*(\\d{4})meanEVI\\.tif$", "\\1", evi_file)
   mean_evi$Year <- as.numeric(year)
-  
   # Append to the results list
   all_evi_results[[year]] <- mean_evi
 }
@@ -682,20 +705,6 @@ print(final_evi_df)
 # Optionally save the results to a CSV file
 write.csv(final_evi_df, "Mean_EVI_by_Region_2008-2020.csv", row.names = FALSE)
 
-
-
-# Load ggplot2 library
-library(ggplot2)
-
-# Assuming final_evi_df is your data frame
-# Boxplot of Mean_EVI by Region and Year
-ggplot(final_evi_df, aes(x = Region, y = Mean_EVI, fill = Region)) +
-  geom_boxplot() +
-  labs(
-       x = "Rice Production Region",
-       y = "Mean EVI") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for better readability
 
 ################################
 ############LSWI################
@@ -758,16 +767,6 @@ View(final_LSWI_df)
 # Optionally save the results to a CSV file
 write.csv(final_LSWI_df, "Mean_LSWI_by_Region_2008-2020.csv", row.names = FALSE)
 
-ggplot(final_LSWI_df, aes(x = Region, y = Mean_LSWI, fill = Region)) +
-  geom_boxplot() +
-  labs(title = "Boxplot of Mean LSWI by Region",
-       x = "Region",
-       y = "Mean EVI") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for better readability
-
-
-
 ################################
 ############Temp################
 ################################
@@ -828,15 +827,6 @@ View(final_Temp_df)
 
 # Optionally save the results to a CSV file
 write.csv(final_Temp_df, "Mean_Temp_by_Region_2008-2020.csv", row.names = FALSE)
-
-ggplot(final_Temp_df, aes(x = Region, y = Mean_Temp, fill = Region)) +
-  geom_boxplot() +
-  labs(title = "Boxplot of Mean Temp by Region",
-       x = "Region",
-       y = "Mean Temp") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for better readability
-
 
 ################################
 ############PAR################
@@ -899,67 +889,300 @@ View(final_PAR_df)
 # Optionally save the results to a CSV file
 write.csv(final_PAR_df, "Mean_PAR_by_Region_2008-2020.csv", row.names = FALSE)
 
-ggplot(final_PAR_df, aes(x = Region, y = Mean_PAR, fill = Region)) +
-  geom_boxplot() +
-  labs(title = "Boxplot of Mean PAR by Region",
-       x = "Region",
-       y = "Mean PAR") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))  # Rotate x-axis labels for better readability
 
-library(gridExtra)
-# Using patchwork
+
+final_evi_df <- final_evi_df %>% dplyr::filter(Region %in% c("Middle Delta", "Grand Prairie"))
+final_LSWI_df <- final_LSWI_df %>% dplyr::filter(Region %in% c("Middle Delta", "Grand Prairie"))
+final_Temp_df <- final_Temp_df %>% dplyr::filter(Region %in% c("Middle Delta", "Grand Prairie"))
+final_PAR_df <- final_PAR_df %>%dplyr:: filter(Region %in% c("Middle Delta", "Grand Prairie"))
+
+
+library(ggplot2)
 library(patchwork)
+library(ggplot2)
+library(patchwork)
+# Define a base theme with increased font sizes
+custom_theme <- theme_minimal(base_size = 12) +  # Increase base font size by 2 points
+  theme(
+    axis.text.x = element_text(hjust = 1, size = 12),  # Increase axis text size
+    axis.title = element_text(size = 12),  # Increase axis title size
+    legend.text = element_text(size = 12),  # Increase legend text size
+    legend.title = element_text(size = 12),  # Increase legend title size
+    plot.caption = element_text(size = 16, hjust = 0.5)  # Increase caption size
+  )
+#https://craig.rbind.io/post/2021-05-17-asgr-3-1-data-visualization/
+# Define the colorblind-friendly palettes
+cbp1 <- c("#E69F00", "#56B4E9", "#009E73",
+          "#F0E442", "#0072B2", "#D55E00", "#CC79A7", "#999999")
 
-# Create each individual plot, suppressing the legend in each plot
+cbp2 <- c("#51127CFF","#FEC287FF", "#FCFDBFFF","#000000", "#EDD9A3", "#F0E442", "#E69F00", "#56B4E9", "#009E73",
+          "#0072B2", "#D55E00", "#CC79A7")
+
+# Define a custom label format for the x-axis
+custom_labels <- c("Grand Prairie" = "Grand\nPrairie", "Middle Delta" = "Middle\nDelta")
+
+# Create each individual plot, suppressing the legend in all but one plot
 plot1 <- ggplot(final_evi_df, aes(x = Region, y = Mean_EVI, fill = Region)) +
-  geom_boxplot() +
-  labs(x = "Rice Production Region", y = "Mean EVI") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "none")
+  geom_boxplot(color = "#D55E00") +
+  labs(x = NULL, y = "Annual Mean EVI") +
+  custom_theme +
+  scale_fill_manual(values = cbp2) +
+  scale_x_discrete(labels = custom_labels) +  # Apply custom x-axis labels
+  theme(legend.position = "none")  # Suppress legend for this plot
 
 plot2 <- ggplot(final_LSWI_df, aes(x = Region, y = Mean_LSWI, fill = Region)) +
-  geom_boxplot() +
-  labs(title = "Boxplot of Mean LSWI by Region", x = "Region", y = "Mean LSWI") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "none")
+  geom_boxplot(color = "#D55E00") +
+  labs(x = NULL, y = "Annual Mean LSWI") +
+  custom_theme +
+  scale_fill_manual(values = cbp2) +
+  scale_x_discrete(labels = custom_labels) +  # Apply custom x-axis labels
+  theme(legend.position = "none")  # Suppress legend for this plot
 
 plot3 <- ggplot(final_Temp_df, aes(x = Region, y = Mean_Temp, fill = Region)) +
-  geom_boxplot() +
-  labs(title = "Boxplot of Mean Temp by Region", x = "Region", y = "Mean Temp") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "none")
+  geom_boxplot(color = "#D55E00") +
+  labs(x = NULL, y = "Annual Mean Temperature (°C)") +
+  custom_theme +
+  scale_fill_manual(values = cbp2) +
+  scale_x_discrete(labels = custom_labels) +  # Apply custom x-axis labels
+  theme(legend.position = "none")  # Suppress legend for this plot
 
 plot4 <- ggplot(final_PAR_df, aes(x = Region, y = Mean_PAR, fill = Region)) +
-  geom_boxplot() +
-  labs(title = "Boxplot of Mean PAR by Region", x = "Region", y = "Mean PAR") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1), legend.position = "none")
+  geom_boxplot(color = "#D55E00") +
+  labs(x = NULL, y = "Annual Mean PAR (μmol m⁻² s⁻¹)") +
+  custom_theme +
+  scale_fill_manual(values = cbp2) +
+  scale_x_discrete(labels = custom_labels) +  # Apply custom x-axis labels
+  theme(legend.position = "none")  # Suppress legend for this plot
 
-# Combine the plots into a 2x2 grid with a single shared legend
-(plot1 | plot2) / (plot3 | plot4) + plot_layout(guides = 'collect')
+# Combine the plots into a 2x2 grid
+boxplot <-  (plot3 | plot4) /(plot1 | plot2) 
+
+# Add the custom caption for x-axis, centered, below the plots
+combined_plot <- boxplot + plot_annotation(
+  caption = "Rice Ecological Production Zone",  
+  theme = theme(plot.caption = element_text(hjust = 0.5, size = 16))  # Increase caption size
+)
+combined_plot
+# Print the final plot
+print(combined_plot)
+
+# Save the combined plot as a PNG file
+ggsave(filename = "C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Figure/regionboxplot.png", 
+       plot = combined_plot, 
+       width = 10, height = 8, dpi = 300)
+
+
+#######Combine Rice production region and boxplot##########
+riceproductionregion <- st_read(
+  "C:/Users/rbmahbub/Documents/Data/GeospatialData/ArkansasShapefile/RiceProductionRegions/RiceProductionRegions6regions/RiceProductionRegions.shp")
+
+# Ensure both datasets are in the same CRS
+riceproductionregion <- st_transform(riceproductionregion, crs(stacked_raster_rast_mean))
+arkansasshp <- st_read(
+  "C:/Users/rbmahbub/Documents/Data/GeospatialData/ArkansasShapefile/CountyShapefileFromArkansasOffice/COUNTY_BOUNDARY.shp"
+)
+# Extract raster values for each polygon in the shapefile
+# Fun can be mean, median, sum, etc. depending on how you want to aggregate
+raster_agg <- terra::extract(stacked_raster_rast_mean, riceproductionregion, fun = mean, na.rm = TRUE, exact = TRUE)
+# Extract standard deviation without exact=TRUE
+raster_agg_sd <- terra::extract(stacked_raster_rast_mean, riceproductionregion, fun = sd, na.rm = TRUE)
+
+
+# Add the extracted values as a new column in the shapefile
+riceproductionregion$GPP_mean <- raster_agg$GPP
+riceproductionregion$GPP_SD <- raster_agg_sd$GPP
+riceproductionregion$GPP_mean[is.nan(riceproductionregion$GPP_mean)] <- NA
+
+# List of counties where we want to retain the GPP_mean values
+retain_counties <- c("Grand Prairie", "White River", "South Delta", "North Delta", "West of Crawleys Ridge", "Middle Delta")
+
+# Update GPP_mean: set it to NA if RiceProduc is not in the retain_counties list
+riceproductionregion$GPP_mean <- ifelse(riceproductionregion$layer %in% retain_counties, 
+                                        riceproductionregion$GPP_mean, 
+                                        NA)
+riceproductionregion$GPP_mean <- riceproductionregion$GPP_mean*8
+riceproductionregion$GPP_SD <- riceproductionregion$GPP_SD*8
+
+combined_plot
+
+
+# Load the required package
+library(patchwork)
+
+# Create the first plot (your modified GPP_mean map)
+gpp_plot <- 
+  ggplot() +
+  # Plot the base layer for rice production regions
+  geom_sf(data = riceproductionregion) +
+  # Filter for polygons with non-NA GPP_mean values and fill based on GPP_mean
+  geom_sf(data = riceproductionregion %>% dplyr::filter(!is.na(GPP_mean)), aes(fill = GPP_mean)) +
+  # Add region labels with a vertical orientation for "West of Crawleys Ridge"
+  geom_sf_label(data = riceproductionregion %>% dplyr::filter(!is.na(GPP_mean)), 
+                aes(label = layer, angle = ifelse(layer == "West of Crawleys Ridge", 75, 0)), size = 3) +
+  # Use viridis color scale for GPP_mean with custom breaks and limits
+  scale_fill_viridis_c(option = "magma", 
+                       direction = -1, 
+                       breaks = c(1600, 1700, 1800, 1900, 2000, 2100), 
+                       limits = c(1650, 2100)) +
+  # Add labels and formatting
+  labs(fill = expression(atop("Mean Cumulative GPP", "(g C m"^ -2~"year"^ -1~")"))) +
+  # Use a clean theme
+  theme_bw() +
+  # Adjust plot margins
+  theme(plot.margin = margin(0, 0, 0, 0),
+        legend.text = element_text(size = 15),  # Adjust the legend text size
+        legend.title = element_text(size = 15)   # Adjust the legend title size
+  ) +
+  # Adjust legend size (height and width) using guides
+  guides(fill = guide_colorbar(
+    barwidth = 1.5,               # Increase the width of the color bar
+    barheight = 10,               # Increase the height of the color bar
+    title.position = "top",       # Position the title at the top
+    title.hjust = 0,              # Center the title horizontally
+    label.vjust = 1           # Adjust legend label position to balance with the title
+  )) +
+  # Add a north arrow for orientation
+  annotation_north_arrow(location = "br", which_north = "true", 
+                         pad_x = unit(0.0, "in"), pad_y = unit(0.185, "in"),
+                         style = north_arrow_fancy_orienteering) +
+  # Add a scale bar
+  annotation_scale(location = "br", width_hint = 0.4) +
+  # Optionally remove axis labels
+  labs(x = NULL, y = NULL)
 
 
 
-# Step 1: Filter data for Middle Delta and Grand Prairie
-middle_delta <- final_evi_df[final_evi_df$Region == "Middle Delta", ]
-grand_prairie <- final_evi_df[final_evi_df$Region == "Grand Prairie", ]
 
-# Step 2: Ensure both regions are aligned by year
-merged_data <- merge(middle_delta, grand_prairie, by = "Year", suffixes = c("_MiddleDelta", "_GrandPrairie"))
+# Arrange the two plots side by side with adjusted width
+final_plot <- (gpp_plot + combined_plot) +
+  plot_layout(ncol = 2, widths = c(1.3, 1.2)) +
+  plot_annotation(tag_levels = 'A')  # Adds "A" and "B" labels automatically
 
-# Step 3: Perform a paired t-test (assuming data is paired by year)
-t_test_result <- t.test(merged_data$Mean_EVI_MiddleDelta, merged_data$Mean_EVI_GrandPrairie, paired = TRUE)
+# Print the final combined plot
+print(final_plot)
 
-# Step 4: Output the results
+# Save the combined plot as a PNG file
+ggsave(filename = "C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Figure/regionboxplot.png", 
+       plot = final_plot, 
+       width = 12, height = 8, dpi = 300)
 
-# Step 1: Filter data for Middle Delta and Grand Prairie
-middle_delta <- final_Temp_df[final_Temp_df$Region == "Middle Delta", ]
-grand_prairie <- final_Temp_df[final_Temp_df$Region == "Grand Prairie", ]
 
-# Step 2: Ensure both regions are aligned by year
-merged_data <- merge(middle_delta, grand_prairie, by = "Year", suffixes = c("_MiddleDelta", "_GrandPrairie"))
 
-# Step 3: Perform a paired t-test (assuming data is paired by year)
-t_test_result <- t.test(merged_data$Mean_Temp_MiddleDelta, merged_data$Mean_Temp_GrandPrairie, paired = TRUE)
-t_test_result
+library(dplyr)
+
+# Function to perform an unpaired t-test between Grand Prairie and Middle Delta
+perform_t_test <- function(df, variable_name) {
+  # Step 1: Filter data for Middle Delta and Grand Prairie
+  middle_delta <- df[df$Region == "Middle Delta", ]
+  grand_prairie <- df[df$Region == "Grand Prairie", ]
+  
+  # Step 2: Ensure both regions are aligned by year
+  merged_data <- merge(middle_delta, grand_prairie, by = "Year", suffixes = c("_MiddleDelta", "_GrandPrairie"))
+  
+  # Step 3: Perform an unpaired t-test
+  t_test_result <- t.test(
+    merged_data[[paste0(variable_name, "_MiddleDelta")]], 
+    merged_data[[paste0(variable_name, "_GrandPrairie")]], 
+    paired = TRUE
+  )
+  
+  return(t_test_result$p.value)
+}
+
+# Perform t-tests for each variable
+p_value_EVI <- perform_t_test(final_evi_df, "Mean_EVI")
+p_value_Temp <- perform_t_test(final_Temp_df, "Mean_Temp")
+p_value_PAR <- perform_t_test(final_PAR_df, "Mean_PAR")
+p_value_LSWI <- perform_t_test(final_LSWI_df, "Mean_LSWI")
+
+# Format the output text
+text_output <- sprintf(
+  "Unpaired t-test between these two regions revealed no significant differences between 
+the annual mean temperature (p-value = %.4f), annual mean PAR (p-value = %.4f), 
+and annual mean LSWI (p-value = %.4f). However, there has been significant differences 
+between EVI values of Grand Prairie regions and Middle Delta regions (p-value = %.4f).",
+  p_value_Temp, p_value_PAR, p_value_LSWI, p_value_EVI
+)
+
+# Print the final text
+cat(text_output)
+p_value_EVI
+p_value_LSWI
+
+library(dplyr)
+
+final_evi_df %>%
+  group_by(Region) %>%
+  summarise(
+    Min_EVI = min(Mean_EVI, na.rm = TRUE),
+    Mean_EVI_EVI = mean(Mean_EVI, na.rm = TRUE),
+    Max_EVI = max(Mean_EVI, na.rm = TRUE)
+  )
+final_evi_df %>%
+  group_by(Region) %>%
+  summarise(Unique_EVI = list(sort(unique(Mean_EVI)) )) %>%
+  pull(Unique_EVI)
+
+
+library(dplyr)
+
+# Extract EVI statistics
+evi_stats <- final_evi_df %>%
+  group_by(Region) %>%
+  summarise(
+    Min_EVI = min(Mean_EVI, na.rm = TRUE),
+    Mean_EVI = mean(Mean_EVI, na.rm = TRUE),
+    Max_EVI = max(Mean_EVI, na.rm = TRUE)
+  )
+
+# Extract LSWI statistics
+lswi_stats <- final_LSWI_df %>%
+  group_by(Region) %>%
+  summarise(
+    Min_LSWI = min(Mean_LSWI, na.rm = TRUE),
+    Mean_LSWI = mean(Mean_LSWI, na.rm = TRUE),
+    Max_LSWI = max(Mean_LSWI, na.rm = TRUE)
+  )
+
+# Extract Temperature statistics
+temp_stats <- final_Temp_df %>%
+  group_by(Region) %>%
+  summarise(
+    Min_Temp = min(Mean_Temp, na.rm = TRUE),
+    Mean_Temp = mean(Mean_Temp, na.rm = TRUE),
+    Max_Temp = max(Mean_Temp, na.rm = TRUE)
+  )
+
+# Extract PAR statistics
+par_stats <- final_PAR_df %>%
+  group_by(Region) %>%
+  summarise(
+    Min_PAR = min(Mean_PAR, na.rm = TRUE),
+    Mean_PAR = mean(Mean_PAR, na.rm = TRUE),
+    Max_PAR = max(Mean_PAR, na.rm = TRUE)
+  )
+
+# Format the text
+text_output <- sprintf(
+  "The average annual mean EVI of Grand Prairie and Middle Delta across 13 years were %.2f (%.2f-%.2f) and %.2f (%.2f-%.2f) respectively. 
+The average annual mean LSWI of Grand Prairie and Middle Delta across 13 years were %.2f (%.2f-%.2f) and %.2f (%.2f-%.2f) respectively. 
+The average annual mean temperature of Grand Prairie and Middle Delta across 13 years were %.2f (%.2f-%.2f) and %.2f (%.2f-%.2f) respectively. 
+The average annual mean PAR of Grand Prairie and Middle Delta across 13 years were %.2f (%.2f-%.2f) and %.2f (%.2f-%.2f) respectively.",
+  
+  evi_stats$Mean_EVI[1], evi_stats$Min_EVI[1], evi_stats$Max_EVI[1], 
+  evi_stats$Mean_EVI[2], evi_stats$Min_EVI[2], evi_stats$Max_EVI[2],
+  
+  lswi_stats$Mean_LSWI[1], lswi_stats$Min_LSWI[1], lswi_stats$Max_LSWI[1], 
+  lswi_stats$Mean_LSWI[2], lswi_stats$Min_LSWI[2], lswi_stats$Max_LSWI[2],
+  
+  temp_stats$Mean_Temp[1], temp_stats$Min_Temp[1], temp_stats$Max_Temp[1], 
+  temp_stats$Mean_Temp[2], temp_stats$Min_Temp[2], temp_stats$Max_Temp[2],
+  
+  par_stats$Mean_PAR[1], par_stats$Min_PAR[1], par_stats$Max_PAR[1], 
+  par_stats$Mean_PAR[2], par_stats$Min_PAR[2], par_stats$Max_PAR[2]
+)
+
+# Print the final text
+cat(text_output)
+
+par_stats

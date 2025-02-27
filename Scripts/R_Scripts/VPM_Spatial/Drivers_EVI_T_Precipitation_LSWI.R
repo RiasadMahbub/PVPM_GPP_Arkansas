@@ -5,8 +5,6 @@
 ### LSWI data: C:\Users\rbmahbub\Documents\Data\GeospatialData\CumulativeVPM\LSWI
 ### EVI data: C:\Users\rbmahbub\Documents\Data\GeospatialData\CumulativeVPM\EVI
 
-
-
 ###Load all the required libraries
 library(raster)
 library(tidyverse)
@@ -202,7 +200,7 @@ for (i in 1:13) {
 
 
 # Assuming 'i' is an integer column
-regression_metrics_df_EVI <- mutate(regression_metrics_df_EVI,
+regression_metrics_df_EVI <- dplyr::mutate(regression_metrics_df_EVI,
                                 i = ifelse(i == 1, 2008,
                                            ifelse(i == 13, 2020,
                                                   ifelse(i >= 2 & i <= 12, i + 2007, i))))
@@ -261,7 +259,7 @@ for (i in 1:13) {
 
 
 # Assuming 'i' is an integer column
-regression_metrics_df_LSWI <- mutate(regression_metrics_df_LSWI,
+regression_metrics_df_LSWI <- dplyr::mutate(regression_metrics_df_LSWI,
                                     i = ifelse(i == 1, 2008,
                                                ifelse(i == 13, 2020,
                                                       ifelse(i >= 2 & i <= 12, i + 2007, i))))
@@ -319,7 +317,7 @@ for (i in 1:13) {
 }
 
 # Assuming 'i' is an integer column
-regression_metrics_df_PAR <- mutate(regression_metrics_df_PAR,
+regression_metrics_df_PAR <- dplyr::mutate(regression_metrics_df_PAR,
                                      i = ifelse(i == 1, 2008,
                                                 ifelse(i == 13, 2020,
                                                        ifelse(i >= 2 & i <= 12, i + 2007, i))))
@@ -376,7 +374,7 @@ for (i in 1:13) {
 
 
 # Assuming 'i' is an integer column
-regression_metrics_df_Temp <- mutate(regression_metrics_df_Temp,
+regression_metrics_df_Temp <- dplyr::mutate(regression_metrics_df_Temp,
                                     i = ifelse(i == 1, 2008,
                                                ifelse(i == 13, 2020,
                                                       ifelse(i >= 2 & i <= 12, i + 2007, i))))
@@ -433,7 +431,7 @@ for (i in 1:13) {
   ggsave(filename, plot, width = 14, height = 8)
 }
 # Assuming 'i' is an integer column
-regression_metrics_df_PD <- mutate(regression_metrics_df_PD,
+regression_metrics_df_PD <- dplyr::mutate(regression_metrics_df_PD,
                                     i = ifelse(i == 1, 2008,
                                                ifelse(i == 13, 2020,
                                                       ifelse(i >= 2 & i <= 12, i + 2007, i))))
@@ -550,7 +548,7 @@ par<-ggscatter(mergedEVILSWIPARGPP, x = "par_mean", y = "AnnualGPP", size =0)+
     p.accuracy = 0.001, label.x = 27, label.y = 3400, size = 8) +
   stat_regline_equation(label.x = 27, label.y = 3200, size = 8) +
   scale_y_continuous(expand = c(0, 0), limits = c(0, 3500)) +
-  xlab(paste0("Annual Mean PAR")) +
+  xlab("Annual Mean PAR (μmol m⁻² s⁻¹)") +  # Updated x-axis label with units
   geom_bin2d(bins = 150) +
   scale_fill_continuous(type = "viridis") +
   geom_smooth(method="lm", size = 3, se=FALSE,)+
@@ -575,7 +573,7 @@ temp<-ggscatter(mergedEVILSWIPARGPP, x = "tmean_mean", y = "AnnualGPP", size =0)
     p.accuracy = 0.001, label.x = 15.5, label.y = 3400, size = 8) +
   stat_regline_equation(label.x = 15.5, label.y = 3200, size = 8) +
   scale_y_continuous(expand = c(0, 0), limits = c(0, 3500)) +
-  xlab(paste0("Annual Mean Temperature")) +
+  xlab("Annual Mean Temperature (°C)") +  # Updated x-axis label with units
   geom_bin2d(bins = 150) +
   scale_fill_continuous(type = "viridis") +
   geom_smooth(method="lm", size = 3, se=FALSE,)+

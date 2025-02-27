@@ -222,6 +222,29 @@ diff_percent_gpp_2011 <- ((mean_gpp_all_years - allrasterscumulativestack_meansd
 cat("Percentage difference in GPP for 2010 compared to all years:", diff_percent_gpp_2010, "%\n")
 cat("Percentage difference in GPP for 2011 compared to all years:", diff_percent_gpp_2011, "%\n")
 
+# Calculate the mean and standard deviation of GPPcum_arkansas
+mean_gpp <- mean(GPPyieldmerge$meancumgpp8dayagg)
+sd_gpp <- sd(GPPyieldmerge$meancumgpp8dayagg)
+
+# Identify the three lowest and highest GPP years
+low_gpp <- GPPyieldmerge[order(GPPyieldmerge$meancumgpp8dayagg), ][1:3, ]
+high_gpp <- GPPyieldmerge[order(GPPyieldmerge$meancumgpp8dayagg, decreasing = TRUE), ][1:3, ]
+
+# Print the formatted output
+cat(sprintf("In the timeframe between 2008 and 2020, the mean GPPcum_arkansas of Arkansas rice fields was %.0f ± %.0f g C m-2 year-1.\n", 
+            mean_gpp, sd_gpp))
+
+cat(sprintf("The lowest GPPcum_arkansas was observed in the year %d (%.0f ± %.0f g C m-2 year-1) followed by %d (%.0f ± %.0f g C m-2 year-1), and %d (%.0f ± %.0f g C m-2 year-1). ",
+            low_gpp$Year[1], low_gpp$meancumgpp8dayagg[1], low_gpp$sdcumgpp8dayagg[1],
+            low_gpp$Year[2], low_gpp$meancumgpp8dayagg[2], low_gpp$sdcumgpp8dayagg[2],
+            low_gpp$Year[3], low_gpp$meancumgpp8dayagg[3], low_gpp$sdcumgpp8dayagg[3]))
+
+cat(sprintf("On the other hand, years %d (%.0f ± %.0f g C m-2 year-1), %d (%.0f ± %.0f g C m-2 year-1), and %d (%.0f ± %.0f g C m-2 year-1) showed higher magnitude of GPPcum_arkansas.",
+            high_gpp$Year[1], high_gpp$meancumgpp8dayagg[1], high_gpp$sdcumgpp8dayagg[1],
+            high_gpp$Year[2], high_gpp$meancumgpp8dayagg[2], high_gpp$sdcumgpp8dayagg[2],
+            high_gpp$Year[3], high_gpp$meancumgpp8dayagg[3], high_gpp$sdcumgpp8dayagg[3]))
+
+
 
 #####################################################################
 ####################primary and secondary axis#######################
@@ -420,6 +443,7 @@ cat("RMSE:", rmse_value, "\n")
 cat("MAE:", mae_value, "\n")
 cat("Bias:", bias_value, "\n")
 cat("R2:", r2_value, "\n")
+
 
 #### spatial variation of temperature vs gpp yield relationship
 #### GPP-yield relation data

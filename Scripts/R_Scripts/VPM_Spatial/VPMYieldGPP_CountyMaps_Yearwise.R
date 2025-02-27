@@ -15,7 +15,6 @@ library(sp)
 library(ggpmisc)
 library(ggrepel)
 library(broom)
-require(ggplot2)
 require(plyr)
 library(Metrics)
 library(ggspatial)
@@ -26,7 +25,6 @@ library(dplyr)
 library(remotes)
 library(lterdatasampler)
 library(ggtext)
-library(raster)
 library(tidyr)
 
 #######VPM Raster Images#######################
@@ -224,11 +222,13 @@ agg_tbl$Year<-as.numeric(agg_tbl$Year)
 agg_tbl$Diff_year <- c(NA, diff(agg_tbl$Year))
 # Calculate differences in mean_yield yields
 agg_tbl$Diff_growth <- c(NA, diff(agg_tbl$mean_yield))
-# Calculate growth rate in percent
-agg_tbl$Rate_percent <- (agg_tbl$Diff_growth / agg_tbl$mean_yield) / agg_tbl$Diff_year * 100
 
+# Calculate Rate_percent using mean_yield from the previous row
+agg_tbl <- agg_tbl %>%
+  dplyr::mutate(Rate_percent = (Diff_growth / dplyr::lag(mean_yield)) / Diff_year * 100)
+         
 # Print the updated data frame
-agg_tbl
+mean(agg_tbl$Rate_percent, na.rm = TRUE)
 
 write.csv(agg_tbl, 
           "C:/Users/rbmahbub/Documents/RProjects/VPM_Spatial/Figure/growth_rate.csv", 
@@ -307,6 +307,8 @@ increasing_rate_yield <- round(((tail(stateyield$Value, 1) - stateyield$Value[1]
 # Print the results
 print(paste("Increasing rate of GPP:", increasing_rate_gpp))
 print(paste("Increasing rate of yield:", increasing_rate_yield))
+
+print(paste("Average Increasing rate of yield:", mean(agg_tbl$Rate_percent,na.rm= TRUE)))
 
 ### Area values of the 
 # Set the working directory
@@ -731,7 +733,7 @@ top5dataframe <- data.frame(AreaPlantedRange = labels,
 for (i in seq_along(labels)) {
   # Filter the data for the current range
   data_range <- countypvalues %>%
-    filter(meanarea > breaks[i] & meanarea <= breaks[i+1])
+    dplyr::filter(meanarea > breaks[i] & meanarea <= breaks[i+1])
   
   
   # Find the top five meanGPP counties

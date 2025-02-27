@@ -125,7 +125,7 @@ USBDC2015.8day$VPD_site<-USBDC2015.8day$VPD_REddyProc
 USBDC2015.8day$Tair_site<-USBDC2015.8day$Ta_REddyProc
 USBDC2015.8day<-USBDC2015.8day%>% dplyr::select(Date, GPP_site, PAR_site, VPD_site, Tair_site)
 USBDC2015.8day$doy<-yday(USBDC2015.8day$Date)
-USBDC2015.8day<-USBDC2015.8day%>% select(Date, GPP_site, PAR_site, VPD_site, Tair_site, doy)
+USBDC2015.8day<-USBDC2015.8day%>% dplyr::select(Date, GPP_site, PAR_site, VPD_site, Tair_site, doy)
 USBDC2015.8day$GPP_site<- formattable(USBDC2015.8day$GPP_site, digits = 2, format = "f")
 USBDC2015.8day$PAR_site<- formattable(USBDC2015.8day$PAR_site, digits = 2, format = "f")
 USBDC2015.8day$Tair_site<- formattable(USBDC2015.8day$Tair_site, digits = 2, format = "f")
@@ -257,7 +257,7 @@ USHRA2016.8day$VPD_site<-USHRA2016.8day$VPD_REddyProc
 USHRA2016.8day$Tair_site<-USHRA2016.8day$Ta_REddyProc
 USHRA2016.8day<-USHRA2016.8day%>% dplyr::select(Date, GPP_site, PAR_site, VPD_site, Tair_site)
 USHRA2016.8day$doy<-yday(USHRA2016.8day$Date)
-USHRA2016.8day<-USHRA2016.8day%>% select(Date, GPP_site, PAR_site, VPD_site, Tair_site, doy)
+USHRA2016.8day<-USHRA2016.8day%>% dplyr::select(Date, GPP_site, PAR_site, VPD_site, Tair_site, doy)
 USHRA2016.8day$siteyear <- paste(substr(deparse(substitute(USHRA2016.8day)), 1, 9))
 USHRA2016.8day
 
@@ -374,7 +374,7 @@ USHRC2016$DOY<- yday(USHRC2016$datetime)
 ### For the new data the nearest date of MODIS is 2017_04_07 and 97
 ### MODIS image nearest one starts at 137 day May 17 for the original data
 MODISdoy<-yday("2016-04-30")
-USHRC2016<-filter(USHRC2016, DOY>=MODISdoy)
+USHRC2016<-dplyr::filter(USHRC2016, DOY>=MODISdoy)
 ##########################################################
 ## 8 day mean
 #####
@@ -442,9 +442,9 @@ USHRC2017.8day$GPP_site<-USHRC2017.8day$GPP_modeled
 USHRC2017.8day$PAR_site<-USHRC2017.8day$PAR_Regression
 USHRC2017.8day$VPD_site<-USHRC2017.8day$VPD_REddyProc
 USHRC2017.8day$Tair_site<-USHRC2017.8day$Ta_REddyProc
-USHRC2017.8day<-USHRC2017.8day%>% select(Date, GPP_site, PAR_site, VPD_site, Tair_site)
+USHRC2017.8day<-USHRC2017.8day%>% dplyr::select(Date, GPP_site, PAR_site, VPD_site, Tair_site)
 USHRC2017.8day$doy<-yday(USHRC2017.8day$Date)
-USHRC2017.8day<-USHRC2017.8day%>% select(Date, GPP_site, PAR_site, VPD_site, Tair_site, doy)
+USHRC2017.8day<-USHRC2017.8day%>% dplyr::select(Date, GPP_site, PAR_site, VPD_site, Tair_site, doy)
 USHRC2017.8day$GPP_site<- formattable(USHRC2017.8day$GPP_site, digits = 2, format = "f")
 USHRC2017.8day$PAR_site<- formattable(USHRC2017.8day$PAR_site, digits = 2, format = "f")
 USHRC2017.8day$Tair_site<- formattable(USHRC2017.8day$Tair_site, digits = 2, format = "f")
@@ -579,7 +579,7 @@ USOF32017.8day$Tair_site<-USOF32017.8day$Ta_REddyProc
 USOF32017.8day<-USOF32017.8day%>% dplyr::select(Date, GPP_site, PAR_site, VPD_site, Tair_site)
 ###CHANGING THE COLUMNN NNAMES TO SITE
 USOF32017.8day$doy<-yday(USOF32017.8day$Date)
-USOF32017.8day<-USOF32017.8day%>% select(Date, GPP_site, PAR_site, VPD_site, Tair_site, doy)
+USOF32017.8day<-USOF32017.8day%>% dplyr::select(Date, GPP_site, PAR_site, VPD_site, Tair_site, doy)
 USOF32017.8day$GPP_site<- formattable(USOF32017.8day$GPP_site, digits = 2, format = "f")
 USOF32017.8day$PAR_site<- formattable(USOF32017.8day$PAR_site, digits = 2, format = "f")
 USOF32017.8day$Tair_site<- formattable(USOF32017.8day$Tair_site, digits = 2, format = "f")
@@ -606,7 +606,7 @@ USOF42018$DOY<- yday(USOF42018$datetime)
 ### For the new data the nearest date of MODIS is 2017_04_07 and 97
 ### MODIS image nearest one starts at 137 day May 17 for the original data
 MODISdoy<-yday("2018-04-15")
-USOF42018<-filter(USOF42018, DOY>=MODISdoy)
+USOF42018<-dplyr::filter(USOF42018, DOY>=MODISdoy)
 ### Scale to daily daily scale
 ### Inorder to scale daile GPP and shortwave radiation needs to be multiplied
 ## Daily mean

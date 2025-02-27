@@ -3,6 +3,10 @@
 Google drive folder:Satellite-SiteCalibrationCSV [all the excel sheets will be exported here]
 Directory of the satellite data in local directory: "C:/Users/rbmahbub/Box/Research/Data/VPM/SatelliteDataForSiteAnalysis"
 Bring 
+After exporting the images the Images are clipped based on 50% threshold pixel values using Distributioncheck50percentricepixelversusfullricepixel script
+Check this folder 
+C:\Users\rbmahbub\Documents\Data\GeospatialData\CumulativeVPM\CumulativeVPMRasterPolygonCoverageFilter
+
 
 2. Run the SiteScaleAnalysis_DataReadingMerging.R and Function.R script to find the calibrated values and use them in the google earth engine code. In the beginning you will have these values. 
 Directory of the site scale EC data: "C:/Users/rbmahbub/Box/Courses/Spring2022/BENG5963 ECData_otherRiceSites/Rice Data_Research Group_05-23-2022.xlsx"
@@ -16,8 +20,8 @@ Directory of the site scale EC data: "C:/Users/rbmahbub/Box/Courses/Spring2022/B
 <!-- Insitu calibrated LUEmax value: 0.06512821
 Insitu calibrated Topt value: 31.79615  --> This mistake happened due to the misplacement of OF6 and OF5 in gee
 
-Insitu calibrated LUEmax value: 0.061
-Insitu calibrated Topt value: 30.671 
+Insitu calibrated LUEmax value: 0.06038462 
+Insitu calibrated Topt value: 30.02308 
 
 
 
@@ -32,10 +36,10 @@ Also from copying 2020 you will copy paste the import geometry part too. The reg
 The latest run is based on luemax 0.05 and 30 deg celsius. Run the scripts 
 Sitecalibration factors: LUEmax and Topt 
 Site Scale analysis
-// calibrated luemax = 0.732671 (0.061*12.011 =0.732671)
-// calibrated topt = 30.671  deg celsius
- var luemax = 0.732671
- var topt = 30.671
+// calibrated luemax = 0.7252796 (0.06038462 *12.011 =0.7252796)
+// calibrated topt = 30.02308  deg celsius
+ var luemax = 0.7252796
+ var topt = 30.02308
 
  biome specific luemax = 0.60055 (0.05*12.011)
  biome specific topt = 30
