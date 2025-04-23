@@ -15,11 +15,11 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## R Markdown
-The R script for the manuscript "Magnitude, drivers, and patterns of gross primary productivity of rice in Arkansas using a calibrated vegetation photosynthesis model" can obtained in this folder
+The R scripts used for the manuscript "Magnitude, drivers, and patterns of gross primary productivity of rice in Arkansas using a calibrated vegetation photosynthesis model" are located in the following folder:
 PVPM_GPP_Arkansas/Scripts/R_Scripts/VPM_Spatial/
 
 The google earth engine script to export EVI, LSWI, temperature and PAR data can be obtained from this folder 
-C:\Users\rbmahbub\Documents\GitHub\PVPM_GPP_Arkansas\Scripts\GEE_Scripts\VPM\YearWiseVPMStateScale
+PVPM_GPP_Arkansas/Scripts/GEE_Scripts/VPM/YearWiseVPMStateScale
 
 This repository contains the full workflow for modeling Gross Primary Productivity (GPP) using the Vegetation Photosynthesis Model (VPM) across Arkansas's rice-growing regions. The analysis combines satellite remote sensing, environmental drivers, and in-situ eddy covariance calibration to assess spatial and temporal GPP patterns and their relationship with rice yield.
 
