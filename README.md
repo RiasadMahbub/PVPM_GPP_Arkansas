@@ -15,49 +15,85 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## R Markdown
-The first step involves site calibration. For site calibration we will require 
+The R script for the manuscript "Magnitude, drivers, and patterns of gross primary productivity of rice in Arkansas using a calibrated vegetation photosynthesis model" can obtained in this folder
+PVPM_GPP_Arkansas/Scripts/R_Scripts/VPM_Spatial/
 
-1. Site Flux data that are derived from 16 site years data
-2. MODIS derived EVI_SG to calculate FPAR and LSWI to calculate water scalar. 
-Derivation of LUEmax require PAR be multiplied with FPAR values
-So the dataframes need to joined and the field names have to be same
-FPAR values have to downscaled to 30 min resolution
-NEEmax values have to derived from the negative perspective
-3. At the site calibration we will fit the model to find the right parameters for 
+The google earth engine script to export EVI, LSWI, temperature and PAR data can be obtained from this folder 
+C:\Users\rbmahbub\Documents\GitHub\PVPM_GPP_Arkansas\Scripts\GEE_Scripts\VPM\YearWiseVPMStateScale
 
+This repository contains the full workflow for modeling Gross Primary Productivity (GPP) using the Vegetation Photosynthesis Model (VPM) across Arkansas's rice-growing regions. The analysis combines satellite remote sensing, environmental drivers, and in-situ eddy covariance calibration to assess spatial and temporal GPP patterns and their relationship with rice yield.
 
+1. Satellite Data Preparation (Google Earth Engine)
 
-This the blueprint of the code for the PVPM Model. The following lines will give the workflow steps and the relevant code to implement it. 
-The whole code runs on a for loop and the following steps are followed
+    Years: 2015–2018 (Site-Scale) and 2008–2020 (Spatial)
 
+    Indices: EVI (to derive FPAR) and LSWI (to derive water stress)
 
-1. Read the column headers **as.character** 
+    Post-processing: Filter raster images using a 50% rice-pixel threshold.
 
-2. Read the data skipping the first two rows **read_excel** 
+2. Site Calibration (R Scripts)
 
-3. Define the filepath 
+    Run SiteScaleAnalysis_DataReadingMerging.R and Function.R
 
-4. sheet_cols, why? (page number in the excel sheet)
+    Calibrate LUEmax and Topt based on EC tower data
 
-5. data_frames list contain the list of the dataframes and each list is based on the name of the dataframe
+        Final site-calibrated values:
 
-5. Make a list of of DOY where the MODIS DOY matches with the ec DOY
+            LUEmax = 0.06038462
 
-6. Create empty list of dataframes (data_frames, points, DOYlist, LUEmax, dflist, modellist, stderror, rsquared, rss, rmse, avgsdevsub, avgsdevadd, lightresponsegs)
+            Topt = 30.02308 °C
 
-7. The datetime column is formatted using **gsub, strptime, as.Date, filter, yday** so that it can be joined later with the MODIS derived satellite data which will be used to calibrate the model.
+    Validate site model performance against EC-observed GPP
 
+    Compare against biome-default VPM parameters
 
-```{r cars}
-summary(cars)
-```
+3. VPM Modeling in Earth Engine
 
-## Including Plots
+    Use calibrated parameters in the 2015–2018 GEE scripts
 
-You can also embed plots, for example:
+    Export final VPM GPP images to CumulativeVPM and VPMDriver
 
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
+4. Model Evaluation (R)
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+    Scripts: ModeledPVPMVPM_satelliteProcessing.R, VPMYieldGPP_CountyMaps_Yearwise.R
+
+    Analyze:
+
+        GPP vs Yield (correlation, Mann-Kendall trend test)
+
+        Mixed pixel effect
+
+        County-level boxplots and spatial maps
+
+    Yield data from: Harvested_ACre_Rice_Arkansas.csv
+
+5. Driver Analysis
+
+    Script: Drivers_EVI_T_Precipitation_LSWI.R
+
+    Input Variables: EVI, LSWI, Temp, PAR, Cropping Frequency, PD
+
+    Outputs:
+
+        Multi-year trends
+
+        Driver vs GPP plots
+
+        Summary tables
+
+6. Raster Handling and Export
+
+    Project rasters (EVI, LSWI, Temp) to match VPM spatial resolution
+
+    Script: AllDriverinOneScript-Projecting500.R
+
+    Outputs stored for downstream driver correlation analysis
+
+7. Advanced Analysis
+
+    Year-by-year regional raster processing (VPMMeanRasterImageAnalysis2008_2020.R)
+
+    Interannual trends (VPM_InterannualGraph.R)
+
+    Distribution check between filtered vs full GPP (Distributioncheck50percentricepixelversusfullricepixel)
+
