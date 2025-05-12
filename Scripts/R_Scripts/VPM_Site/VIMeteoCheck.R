@@ -150,7 +150,7 @@ vi_df_2015_2018 <- vi_df_2015_2018[c("USHRA_2015_VI", "USHRA_2016_VI", "USHRA_20
                                "USBDA_2016_VI", "USBDC_2015_VI", "USBDC_2016_VI", "USOF3_2017_VI", 
                                "USOF2_2017_VI", "USOF1_2017_VI", "USOF4_2018_VI", "USOF5_2018_VI",
                                "USOF6_2018_VI")]
-
+ncol(vi_df_2015_2018$USHRC_2015_VI)
 # Applyclassify_columns
 mapply(classify_columns, names(vi_df_2015_2018), vi_df_2015_2018)
 vi_df_2015_2018 <- lapply(vi_df_2015_2018, drop_columns)# Apply to all dataframes in the list
@@ -199,10 +199,8 @@ meteo_df_2015_2018 <- meteo_df_2015_2018[c("USHRA_2015_Meteo", "USHRA_2016_Meteo
                                      "USHRC_2015_Meteo", "USHRC_2016_Meteo", "USHRC_2017_Meteo", "USBDA_2015_Meteo", 
                                      "USBDA_2016_Meteo", "USBDC_2015_Meteo", "USBDC_2016_Meteo", "USOF3_2017_Meteo", 
                                      "USOF2_2017_Meteo", "USOF1_2017_Meteo" 
-                                    # ,"USOF4_2018_Meteo", "USOF5_2018_Meteo","USOF6_2018_Meteo"
+                                     ,"USOF4_2018_Meteo", "USOF5_2018_Meteo","USOF6_2018_Meteo"
                                      )]
-
-
 # Applyclassify_columns
 mapply(classify_columns, names(meteo_df_2015_2018), meteo_df_2015_2018)
 meteo_df_2015_2018 <- lapply(meteo_df_2015_2018, drop_columns)# Apply to all dataframes in the list
@@ -212,7 +210,7 @@ meteo_df_2015_2018 <- lapply(meteo_df_2015_2018, sort_by_date)
 sapply(meteo_df_2015_2018, nrow) #### nrows is 364 or 365
 # Apply the interpolate_missing_values function to all dataframes in the list
 meteo_df_2015_2018 <- lapply(meteo_df_2015_2018, interpolate_missing_values)
-plot(meteo_df_2015_2018$USHRA_2015_Meteo$Date, meteo_df_2015_2018$USHRA_2015_Meteo$Ec)
+plot(meteo_df_2015_2018$USOF6_2018_Meteo$Date, meteo_df_2015_2018$USOF6_2018_Meteo$Ec)
 # Apply to meteo_df_2015_2018 using mapply (preserves names)
 meteo_df_2015_2018 <- mapply(add_siteyeardate,
                              meteo_df_2015_2018,
@@ -221,15 +219,12 @@ meteo_df_2015_2018 <- mapply(add_siteyeardate,
 
 # Verify one element
 meteo_df_2015_2018[[1]]$siteyeardate  # Check first dataframe
-
-
-
 ##########################merge list ###############################
 VImeteo20152018list <- mapply(left_join_by_siteyeardate, sg_interpolated_list, meteo_df_2015_2018, SIMPLIFY = FALSE)
 lapply(VImeteo20152018list, function(df) setdiff(names(df), names(VImeteo20152018list[[which.min(sapply(VImeteo20152018list, ncol))]])))
 VImeteo20152018list <- lapply(VImeteo20152018list, function(df) {missing_cols <- setdiff(all_cols <- unique(unlist(lapply(VImeteo20152018list, names))), names(df)); df[missing_cols] <- NA; df[all_cols] <- df[all_cols]; df})
 VImeteo20152018combine <- do.call(rbind, VImeteo20152018list)
-
+plot(VImeteo20152018list$USOF6_2018_VI$Date, VImeteo20152018list$USOF6_2018_VI$Ec)
 
 sapply(VImeteo20152018list, ncol)
 # Get column counts
@@ -261,7 +256,7 @@ ncol(sg_interpolated_list)
 plot(vi_sg_interpolated_combin$NDVI, vi_sg_interpolated_combin$kNDVI)
 
 
-
+vi_sg_interpolated_combin
 
 
 

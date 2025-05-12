@@ -2,90 +2,131 @@
 ######################################
 ## site data = sitecombineddata
 ## spatial data = VImeteo20152018combine
-
 library(ggpubr)
-source("VIMeteoCheck.R")  # This loads all variables created in that script
-#####Join Site data and satellite data
-sitecombineddata$siteyeardate
+library(randomForest)
+library(caTools)
+library(viridis)
+library(ggplot2)
+#source("VIMeteoCheck.R")  # This loads all variables created in that script
 # Add a 'site' column to each dataframe based on the list name (without .csv)
-
-
 ##########
+#####Join Site data and satellite data :sitecombineddata$siteyeardate
 joined_df <- dplyr::left_join(sitecombineddata, VImeteo20152018combine, by = "siteyeardate")
 unique(joined_df$siteyear)
 unique(sitecombineddata$siteyear)
-
 View(joined_df)
 nrow(joined_df)
+
 ### years  of site data not available will show NA values
-
-###Calculate LUE
-
-###Calculate fPAR
 ###Calculate fPAR as a function of LAI
-
-###Calculate fPAR as a function of EVI
-# Define the function
+# Define the function ###Calculate fPAR as a function of EVI
 calculate_fapar <- function(evi) {
-  fapar <- 1.24 * evi - 0.168
-  fapar <- pmax(pmin(fapar, 1), 0)  # Clip values to [0, 1]
+  fapar <- 1.25 * (evi - 0.1)
   return(fapar)
 }
 
+
+calculate_fapar <- function(ndvi) {
+  fpar_max <- 0.95
+  f_ndvi <- pmin(pmax((ndvi - 0.1) / (0.9 - 0.1), 0), 1)
+  fpar <- fpar_max * f_ndvi
+  return(fpar)
+}
+
+calculate_fapar_beer <- function(LAI, K = 0.5) {
+  fapar <- 1 - exp(-K * LAI)
+  return(fapar)
+}
+
+
 # Apply the function to the EVI column in joined_df
 joined_df$fAPAR <- calculate_fapar(joined_df$EVI)
+joined_df$fAPAR <- calculate_fapar(joined_df$NDVI)
+joined_df$fAPAR <- calculate_fapar_beer(joined_df$Lai)
 joined_df$APAR <- joined_df$fAPAR * joined_df$PAR_site
-joined_df$LUE<- (joined_df$GPP) / (joined_df$APAR)
+joined_df$LUE<- (joined_df$GPP) / (joined_df$APAR) ###Calculate LUE
 ###Calculate fPAR
 
-
-####Random FOrest ###########
-# Load necessary libraries
-library(randomForest)
-library(caTools)
-library(ggplot2)
-
+####Random Forest ###########
 # Select predictors and response variable
-rf_data <- joined_df[, c("LUE",  "VPD_site", "Tair_site", "rH_site", 
+rf_data <- joined_df[, c("GPP_site", "PAR_site","fAPAR",
+  "LUE",  "VPD_site", "Tair_site", "rH_site", 
                          "kNDVI", "NIRv",  "NDVI", "LSWI", "nir", "sNIRvNDPI",
-                         "SAVI2", "TDVI", "DAP", "siteyear", "GPP_site", "PAR_site", "fAPAR", 
-                         "Ec", "Ei", "Es", "Lai", "avgRH", "dayl", "ppt"
-                         #, "LST_1KM"
+                         "SAVI2", "TDVI",  "Lai",
+                         "DAP", "siteyear",
+                          "Ec", "Ei", "Es",  "avgRH", "dayl", "ppt" 
+                         ,"Variety", "DOP", "EVI"
+                         #, "LST_1KM","fAPAR"
                          )]
+rf_data_whole<-rf_data
+View(rf_data[rf_data$fAPAR > 1, ])
+View(rf_data[!is.finite(rf_data$LUE) | is.na(rf_data$LUE), ])  # Show rows where LUE is Inf or NA
+View(rf_data[rf_data$LUE > 1, ])
+hist(rf_data$LUE)
+# Histogram of fAPAR when LUE > 1
+hist(rf_data$Lai[rf_data$LUE > 1],
+     main = "Lai  when LUE > 1",
+     xlab = "Lai",
+     col = "red",
+     breaks = 20)
+
+# Histogram of fAPAR when LUE <= 1
+hist(rf_data$Lai[rf_data$LUE <= 1],
+     main = "Lai when LUE ≤ 1",
+     xlab = "Lai",
+     col = "blue",
+     breaks = 20)
+
+
+# Histogram of fAPAR when LUE > 1
+hist(rf_data$NDVI[rf_data$LUE > 1],
+     main = "NDVI  when LUE > 1",
+     xlab = "NDVI",
+     col = "red",
+     breaks = 20)
+
+# Histogram of LUE when EVI ≤ 1
+hist(rf_data$NDVI[rf_data$LUE <= 1],
+     main = "NDVI when LUE ≤ 1",
+     xlab = "NDVI",
+     col = "blue",
+     breaks = 20)
+
 
 # Drop rows with NA values
 # Remove rows with NA or Inf in LUE
 rf_data <- rf_data[is.finite(rf_data$LUE), ]
 rf_data <- rf_data[!is.na(rf_data$LUE), ]#where the LUE value is NA, keeping NAs in other columns
-
-
-rf_data <- rf_data[rf_data$LUE <= 10, ]  # Remove rows where LUE is greater than 2
+#rf_data <- rf_data[rf_data$LUE <= 1, ]  # Remove rows where LUE is greater than 2
+max(rf_data$LUE, na.rm = TRUE)
 hist(joined_df$LUE)
 hist(rf_data$LUE)
 nrow(rf_data)
+nrow(joined_df)
 # Scale numeric columns (excluding the target variable and any non-numeric columns)
 numeric_cols <- sapply(rf_data, is.numeric)
-rf_data <- rf_data
-rf_data[, numeric_cols] <- scale(rf_data[, numeric_cols])
+rf_data_scaled <- rf_data
+#rf_data_scaled[, numeric_cols] <- scale(rf_data_scaled[, numeric_cols])
 View(rf_data)
 # Split the dataset into training and testing sets
-set.seed(123)
+set.seed(456)
 # Define siteyears for each split
-train_siteyears <- c("USHRA2016", "USOF22017", "USOF12017", "USHRA2015", "USBDA2016", "USBDC2015", "USBDC2016", "USHRA2017")
-test_siteyears  <- c("USHRC2017", "USBDA2015")
-val_siteyears <- c("USHRC2015", "USHRC2016")
-
+train_siteyears <- c("USHRA2016", "USOF22017", "USOF12017", "USHRA2015", 
+                     "USBDA2016", "USBDC2015", "USBDC2016", "USHRA2017",
+                     "USHRC2015", "USHRC2016", "USOF62018" ,"USOF52018")
+test_siteyears  <- c("USHRC2017", "USBDA2015", "USOF42018")
 # Subset the data
-train <- subset(rf_data, siteyear %in% train_siteyears)
-validation <- subset(rf_data, siteyear %in% val_siteyears)
-test <- subset(rf_data, siteyear %in% test_siteyears)
+train <- subset(rf_data_scaled, siteyear %in% train_siteyears)
+#validation <- subset(rf_data_scaled, siteyear %in% val_siteyears)
+test <- subset(rf_data_scaled, siteyear %in% test_siteyears)
 
 # Fit the Random Forest model
-train_model_input <- subset(train, select = -c(siteyear, GPP_site, PAR_site, fAPAR))
-rf_model <- randomForest(LUE ~ ., data = train_model_input, ntree = 1000, do.trace = 100, importance = TRUE)
+train_model_input <- subset(train, select = -c(siteyear, GPP_site, PAR_site, fAPAR, DOP, EVI, NDVI, Lai))
+rf_model <- randomForest(LUE ~ ., data = train_model_input, ntree = 100, do.trace = 10, importance = TRUE)
 
 # Plot MSE over trees
-plot(1:1000, rf_model$mse, type = "l", xlab = "Number of Trees", ylab = "MSE", main = "Random Forest MSE")
+plot(1:100, rf_model$mse, type = "l", xlab = "Number of Trees", ylab = "MSE", main = "Random Forest MSE")
+
 
 # Variable importance plot
 varImpPlot(rf_model, main = "Random Forest Variable Importance")
@@ -104,7 +145,7 @@ ggplot(train, aes(x = LUE, y = predicted_LUE)) +
   annotate("text", 
            x = min(train$LUE), 
            y = max(train$predicted_LUE), 
-           label = paste0("R² = ", round(train_R2, 2), 
+           label = paste0(#"R² = ", round(train_R2, 2), 
                           "\nMAE = ", round(mae_val, 2)),
            hjust = 0, vjust = 1, size = 5, fontface = "bold")
 
@@ -121,18 +162,19 @@ ggplot(test, aes(x = LUE, y = predicted_LUE)) +
   annotate("text", 
            x = min(test$LUE), 
            y = max(test$predicted_LUE), 
-           label = paste0("R² = ", round(test_R2, 2), 
+           label = paste0(#"R² = ", round(test_R2, 2), 
                           "\nMAE = ", round(test_MAE, 2)),
            hjust = 0, vjust = 1, size = 5, fontface = "bold")
 
 
-# Predict LUE for all rows in rf_data using the trained model
-rf_data$LUEpredicted <- predict(rf_model, newdata = rf_data)
 
+# Predict LUE for all rows in rf_data using the trained model
+
+rf_data$LUEpredicted <- predict(rf_model, newdata = rf_data_scaled)
 plot(rf_data$LUEpredicted, rf_data$LUE)
-joined_df$GPP_predicted <- joined_df$LUEpredicted * joined_df$PAR_site * joined_df$fAPAR
-plot(joined_df$GPP_predicted, joined_df$GPP_site)
-plot(joined_df$LUEpredicted, joined_df$GPP_site)
+rf_data$GPP_predicted <- rf_data$LUEpredicted * rf_data$PAR_site * rf_data$fAPAR
+plot(rf_data$GPP_site, rf_data$GPP_predicted)
+plot(rf_data$LUEpredicted, rf_data$GPP_site)
 ####oob
 # Access the Out-of-Bag (OOB) predictions
 p.rf.oob <- predict(rf_model)  # No dataset specified, OOB predictions will be used
@@ -144,14 +186,12 @@ summary(r.rpp.oob)
 
 # Calculate RMSE for OOB
 rmse.oob <- sqrt(mean(r.rpp.oob^2))  # RMSE formula
-
 # Print RMSE
 cat("RMSE (OOB):", rmse.oob, "\n")
-
 # Plot OOB predictions vs actual values
 plot(train$LUE ~ p.rf.oob, asp = 1, pch = 20,
      xlab = "Out-of-bag cross-validation estimates",
-     ylab = "Actual", xlim = c(2, 3.3), ylim = c(2, 3.3),
+     ylab = "Actual", xlim = c(0, 10), ylim = c(0, 10),
      main = "LUE - Out-of-bag Cross-Validation (Random Forest)")
 grid()
 abline(0, 1)  # Adds a line of slope = 1 for reference
@@ -168,7 +208,6 @@ system.time(
   for (i in 1:n) {
     # Train the Random Forest model on the training data
     model.rf <- randomForest(LUE ~ ., data=train_model_input, ntree=1000, importance=T, na.action=na.omit)
-    
     # Collect R² and MSE statistics from the model
     rf.stats[i, "rsq"] <- median(model.rf$rsq)   # R² value for the run
     rf.stats[i, "mse"] <- median(model.rf$mse)   # MSE value for the run
@@ -190,23 +229,20 @@ rug(rf.stats[,"mse"])  # Adds a rug plot to visualize the distribution
 library(corrplot)
 
 # Select only numeric columns
-numeric_df <- joined_df[sapply(joined_df, is.numeric)]
+numeric_df <- rf_data[sapply(rf_data, is.numeric)]
 
 # Compute correlation matrix
 cor_matrix <- cor(rf_data, use = "pairwise.complete.obs")
-
 # Plot the correlation matrix with numbers
 corrplot(cor_matrix, method = "number")
 # Compute correlation matrix
 cor_matrix <- cor(numeric_df, use = "pairwise.complete.obs")
-
 # Save plot as high-resolution PNG
 png("correlation_plot.png", width = 6, height = 6, units = "in", res = 1000)
 corrplot(cor_matrix, method = "number")
 dev.off()
 
 plot(rf_data$DAP, rf_data$LUE)
-
 
 ### Why some LUE are so high 
 # Filter and print rows where LUE > 1
@@ -218,9 +254,6 @@ hist(rf_data$LUE)
 ### Why some LUE are infinite 
 
 plot(rf_data, rf_data$LUE)
-
-rf_data$LUE
-
 plot(joined_df$kNDVI, joined_df$GPP_site)
 plot(joined_df$SAVI2, joined_df$GPP_site)
 plot(joined_df$GNDVI, joined_df$GPP_site)
@@ -228,35 +261,92 @@ plot(joined_df$LSWI, joined_df$GPP_site)
 plot(rf_data$DAP, rf_data$LUE)
 plot(joined_df$DAP, joined_df$LUE)
 rf_data$LUE
-ggplot(data=rf_data, aes(x =GPP_site , y =GPP_predicted, col = DAP))+
-  geom_abline(intercept = 0, slope = 1, size =5, col ="red", linetype="dashed")+
-  geom_point(size =10) +
-  #coord_fixed(ratio = 1) +
-  xlim(-5, 30)+
-  ylim(-5, 30)+
-  xlab(bquote('GPP EC ('*g~ 'C'~ m^-2~day^-1*') 8-day mean'))+
-  ylab(expression(paste(GPP~VPM[spatial],~'('*g~ 'C'~ m^-2~day^-1*')' )))+ # '( '*g~ 'C'~ m^-2~day^-1*')'
-  #ggtitle("Way 3 Pixel 3")+
-  geom_smooth(method=lm, se = FALSE, size = 5)+
-  #facet_wrap(~year)+
-  scale_color_viridis(option = "D", direction=-1, limits = c(0, 170))+
-  stat_regline_equation(label.x = -5, label.y = 23, size = 16)+
-  stat_cor(aes(label = ..rr.label..), label.x = -5, label.y = 21, size = 16)+
-  #geom_text(aes(label=LUE),hjust=0, vjust=0)+
-  # ggplot2::annotate("text", x = -0.95, y = 29, label = sprintf("RMSE: %0.2f", GPPsatelliteVPMrmse), size = 16, fontface = 'italic') +
-  # ggplot2::annotate("text", x = -1.5, y = 25, label = sprintf("MAE:  %0.2f",GPPsatelliteVPMmae), size = 16, fontface = 'italic') +
-  # ggplot2::annotate("text", x = -1.5, y = 27, label = sprintf("Bias: %0.2f", GPPsatelliteVPMbias), size = 16, fontface = 'italic') +
-  # ggplot2::annotate("text", x = 8.5, y = 29, label = expression(~''*g~'C'~m^{-2}~day^{-1}*''),size = 16, parse = TRUE)+
-  # ggplot2::annotate("text", x = 7.5, y = 25, label = expression(~''*g~'C'~m^{-2}~day^{-1}*''),size = 16, parse = TRUE)+
-  # ggplot2::annotate("text", x = 7.5, y = 27, label = expression(~''*g~'C'~m^{-2}~day^{-1}*''),size = 16, parse = TRUE)+
-  # #annotate("text", x = 0, y = 30, label = paste("Number of observations: ", nrow(way3pixel3df)), size =5)+
-  theme_classic()+
-  theme(text = element_text(size = 48))+
-  theme(legend.key.size = unit(2, 'cm'))+
-  theme(axis.line=element_line(size=1.7))+
-  theme(plot.margin=grid::unit(c(0,0,0,0), "mm"))
 
 
+
+
+
+
+
+##########################################################
+#########################################################
+library(randomForest)
+
+# Define siteyears for each split
+train_siteyears <- c("USHRA2016", "USOF22017", "USOF12017", "USHRA2015", 
+                     "USBDA2016", "USBDC2015", "USBDC2016", "USHRA2017",
+                     "USHRC2015", "USHRC2016", "USOF62018", "USOF52018")
+test_siteyears  <- c("USHRC2017", "USBDA2015", "USOF42018")
+
+# Subset the data
+train <- subset(rf_data_scaled, siteyear %in% train_siteyears)
+test <- subset(rf_data_scaled, siteyear %in% test_siteyears)
+
+# Prepare training input (excluding certain columns)
+train_model_input <- subset(train, select = -c(siteyear, GPP_site, PAR_site, fAPAR))
+
+# Initialize a matrix to collect variable importance values
+importance_list <- list()
+
+# Run Random Forest 30 times with different seeds
+for (i in 1:30) {
+  cat("Running model", i, "with seed", 100 + i, "\n")
+  set.seed(100 + i)  # Different seed each time
+  rf_model <- randomForest(
+    LUE ~ ., 
+    data = train_model_input, 
+    ntree = 100, 
+    do.trace = 10,  # Print progress every 10 trees
+    importance = TRUE
+  )
+  importance_list[[i]] <- importance(rf_model, type = 1)  # Type 1: %IncMSE
+}
+
+# Convert the list to a 3D array then compute mean across the third dimension
+importance_array <- simplify2array(importance_list)
+mean_importance <- apply(importance_array, 1:2, mean)
+
+# Convert to data frame for easier viewing
+mean_importance_df <- as.data.frame(mean_importance)
+mean_importance_df$Variable <- rownames(mean_importance_df)
+
+# View or sort by importance
+mean_importance_df <- mean_importance_df[order(-mean_importance_df$`%IncMSE`), ]
+print(mean_importance_df)
+
+mean_importance_df100<-mean_importance_df
+
+mean_importance_df100
+mean_importance_df400
+mean_importance_df300
+mean_importance_df200
+
+
+
+df100 <- mean_importance_df100 %>% mutate(Seed = "Seed 100")
+df200 <- mean_importance_df200 %>% mutate(Seed = "Seed 200")
+df300 <- mean_importance_df300 %>% mutate(Seed = "Seed 300")
+df400 <- mean_importance_df400 %>% mutate(Seed = "Seed 400")
+
+combined_df <- bind_rows(df100, df200, df300, df400)
+
+
+# Optional: order variables by average importance
+ordered_vars <- combined_df %>%
+  group_by(Variable) %>%
+  summarise(meanImp = mean(`%IncMSE`)) %>%
+  arrange(meanImp) %>%
+  pull(Variable)
+
+combined_df$Variable <- factor(combined_df$Variable, levels = ordered_vars)
+
+# Plot
+ggplot(combined_df, aes(x = `%IncMSE`, y = Variable, fill = Seed)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(x = "% Increase in MSE", y = NULL, title = "Variable Importance across Different Seeds") +
+  theme_minimal(base_size = 14) +
+  scale_fill_brewer(palette = "Set2") +
+  theme(legend.position = "bottom")
 
 set.seed(123)
 
@@ -278,13 +368,10 @@ rmse_values <- numeric(1000)
 # Run the loop for 1000 iterations
 for (i in 1:1000) {
   cat("Iteration:", i, "\n")
-  
   # Clean training data
   train_base <- na.omit(train_base)
-  
   # Train RF model
   rf_model <- randomForest(LUE ~ ., data = train_base, ntree = 100, importance = FALSE)
-  
   # Predict on test data
   test_data$predicted_LUE <- predict(rf_model, newdata = test_data[, !(names(test_data) %in% c("siteyear", "predicted_LUE", "error"))])
   
@@ -358,25 +445,48 @@ ggplot(val_data, aes(x = LUE, y = predicted_LUE)) +
 
 View(val_data)
 
+
+###############################
+######RANDOMFORESTRANGER#######
+###############################
+#3
 require(ranger)
 set.seed(314)
-m.lzn.ra <- ranger(logZn ~ ffreq + x + y + dist.m + elev + soil + lime, 
-                   data = meuse, 
+train_model_input <- subset(train, select = -c(siteyear, GPP_site, PAR_site, fAPAR))
+vars <- c("VPD_site", "Tair_site", "rH_site", "kNDVI", "NIRv", "NDVI", "LSWI", "nir", "sNIRvNDPI",
+          "SAVI2", "TDVI", "DAP", "Ec", "Ei", "Es",
+          "Lai", "avgRH", "dayl", "ppt")
+
+# Build the formula dynamically
+formula <- as.formula(paste("LUE ~", paste(vars, collapse = " + ")))
+
+# Fit the random forest model
+m.lzn.ra <- ranger(formula,
+                   data = train_model_input,
                    importance = 'permutation',
                    scale.permutation.importance = TRUE,
                    mtry = 3)
 print(m.lzn.ra)
 
 set.seed(314)
-m.lzn.ra.i <- ranger(logZn ~ ffreq + x + y + dist.m + elev + soil + lime, 
-                     data = meuse, 
+m.lzn.ra.i <-  ranger(formula,
+                      data = train_model_input,
                      importance = 'impurity',
                      mtry = 3)
+
 print(m.lzn.ra.i)
 
-p.ra <- predict(m.lzn.ra, data=meuse)
+##################################################
+#############3.2 Goodness of fit#################
+##################################################
+p.rf <- predict(m.lzn.ra, data=train_model_input)
+str(p.rf)
+summary(r.rap <- train_model_input$LUE - train_model_input$predicted_LUE)
+(rmse.ra <- sqrt(sum(r.rap^2)/length(r.rap)))
+
+p.ra <- predict(m.lzn.ra, data=train_model_input)
 str(p.ra)
-summary(r.rap <- meuse$logZn - p.ra$predictions)
+summary(r.rap <- train_model_input$LUE - train_model_input$predicted_LUE)
 (rmse.ra <- sqrt(sum(r.rap^2)/length(r.rap)))
 
 c(rmse.ra, rmse.rf)
@@ -498,13 +608,42 @@ plot(meuse$ffreq,
 abline(h = ranger::importance(m.lzn.ra.l)["ffreq"], col = "red")
 
 
+
+
+###################################################
+############## Meteo +VI ####################################
+###################################################
+
+
+
+
+###################################################
+############## VI ####################################
+###################################################
+
+
+
+
+###################################################
+############## Meteo ####################################
+###################################################
+
+
+################################
+#########Interpretable ML#######
+################################
+rf_data
 require(iml)
 vars <- c("ffreq","x","y","dist.m","elev","soil","lime")
-X <-  meuse[, vars]
-predictor <- Predictor$new(model = m.lzn.ra, data = X, y = meuse$logZn)
+vars <- c("VPD_site", "Tair_site", "rH_site", "kNDVI", "NIRv", "NDVI", "LSWI", "nir", "sNIRvNDPI",
+          "SAVI2", "TDVI", "DAP", "siteyear", "GPP_site", "PAR_site", "fAPAR", "Ec", "Ei", "Es",
+          "Lai", "avgRH", "dayl", "ppt")
+
+X <-  rf_data[, vars]
+predictor <- Predictor$new(model = m.lzn.ra, data = X, y = train_model_input$LUE)
 str(predictor)
 
-predictor.qrf <- Predictor$new(model = m.lzn.qrf, data = X, y = meuse$logZn)
+predictor.qrf <- Predictor$new(model = m.lzn.qrf, data = X, y = train_model_input$LUE)
 str(predictor.qrf)
 
 imp.mae <- iml::FeatureImp$new(predictor, loss = "mae")
@@ -645,5 +784,4 @@ detach("package:Rcpp", unload = TRUE, force = TRUE)
 # Then unload its DLL manually
 dyn.unload(file.path(.libPaths()[1], "Rcpp", "libs", "x64", "Rcpp.dll"))
 install.packages("Rcpp", type = "source")
-
 
