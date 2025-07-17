@@ -159,19 +159,76 @@ hist_plot(rf_data, "LUE_evi", "Distribution of LUE (EVI-based)")
 hist_plot(rf_data, "LUE_ndvi", "Distribution of LUE (NDVI-based)")
 hist_plot(rf_data, "LUE_lai", "Distribution of LUE (LAI-based)")
 
-# fAPAR distributions conditional on LUE
+
+library(ggplot2)
+library(patchwork)
+
+# Helper function to generate histogram with a title and label
+hist_plot <- function(data, var, title) {
+  ggplot(data, aes_string(x = var)) +
+    geom_histogram(fill = "#69b3a2", bins = 30, color = "black") +
+    labs(y = "Frequency", title = title) +
+    theme_classic() +
+    theme(
+      text = element_text(size = 16),
+      plot.title = element_text(hjust = 0.5),
+      axis.title.x = element_blank()
+    )
+}
+
+# Create individual histograms
+p1 <- hist_plot(rf_data, "LUE_evi", "Distribution of LUE (EVI-based)")
+p2 <- hist_plot(rf_data, "LUE_ndvi", "Distribution of LUE (NDVI-based)")
+p3 <- hist_plot(rf_data, "LUE_lai", "Distribution of LUE (LAI-based)")
+
+# Combine with annotations A, B, C
+combined_plot <- (p1 / p2 / p3) +
+  plot_annotation(tag_levels = 'A') &
+  theme(plot.tag = element_text(size = 18, face = "bold"))
+
+# Add shared x-axis label
+combined_plot <- combined_plot & labs(x = "Light Use Efficiency (gC mol⁻¹ photon)")
+
+# Save the figure
+ggsave(
+  filename = "C:/Users/rbmahbub/Documents/RProjects/GapfillingOtherRiceSites/Figure/PaperFigure/EVINDVILAILUE.png",
+  plot = combined_plot,
+  width = 10,
+  height = 15,
+  dpi = 300
+)
+
+
+library(ggplot2)
+library(patchwork)
+
+# Function to generate conditional fAPAR histograms by LUE threshold
 fapar_hist_plot <- function(data, fapar_var, lue_var, title) {
   ggplot(data, aes(x = .data[[fapar_var]], fill = .data[[lue_var]] > 1)) +
     geom_histogram(position = "identity", alpha = 0.6, bins = 20) +
-    scale_fill_manual(values = c("blue", "red")) +
-    labs(title = title, x = fapar_var, y = "Frequency") +
-    theme_minimal()
+    scale_fill_manual(values = c("blue", "red"), labels = c("LUE ≤ 1", "LUE > 1")) +
+    labs(title = title, x = fapar_var, y = "Frequency", fill = "LUE Group") +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(hjust = 0.5, face = "bold"),
+      legend.position = "bottom"
+    )
 }
 
-# Generate conditional histograms
-fapar_hist_plot(rf_data, "fAPAR_evi", "LUE_evi", "fAPAR distribution by LUE threshold (EVI)")
-fapar_hist_plot(rf_data, "fAPAR_ndvi", "LUE_ndvi", "fAPAR distribution by LUE threshold (NDVI)")
-fapar_hist_plot(rf_data, "fAPAR_lai", "LUE_lai", "fAPAR distribution by LUE threshold (LAI)")
+# Generate individual plots
+p1 <- fapar_hist_plot(rf_data, "fAPAR_evi", "LUE_evi", "A. fAPAR (EVI-based)")
+p2 <- fapar_hist_plot(rf_data, "fAPAR_ndvi", "LUE_ndvi", "B. fAPAR (NDVI-based)")
+p3 <- fapar_hist_plot(rf_data, "fAPAR_lai", "LUE_lai", "C. fAPAR (LAI-based)")
+
+# Combine vertically
+fapar_combined <- p1 / p2 / p3 + plot_layout(guides = "collect") & theme(legend.position = "bottom")
+
+# Save the figure
+ggsave("C:/Users/rbmahbub/Documents/RProjects/GapfillingOtherRiceSites/Figure/PaperFigure/EVINDVILAIfapar_thresholds.png",
+       fapar_combined, width = 10, height = 12, dpi = 300)
+
+# Figure caption suggestion:
+cat("Figure S8: Distribution of fAPAR values derived from EVI (A), NDVI (B), and LAI (C), separated by a light use efficiency (LUE) threshold of 1. Bars in red represent samples with LUE > 1, and blue bars represent LUE ≤ 1.")
 
 # =============================================================================
 # TIME SERIES VISUALIZATIONS
@@ -218,9 +275,9 @@ ggplot(rf_data, aes(x = DAP, y = LUE_lai, color = fAPAR_lai, size = GPP_site)) +
   ggtitle("LUE Based on LAI")
 
 # Check for rows where LUE_evi, LUE_ndvi, and LUE_lai are infinite or NA
-lue_evi_infinite_na_count <- sum(!is.finite(rf_data$LUE_evi) | is.na(rf_data$LUE_evi))
-lue_ndvi_infinite_na_count <- sum(!is.finite(rf_data$LUE_ndvi) | is.na(rf_data$LUE_ndvi))
-lue_lai_infinite_na_count <- sum(!is.finite(rf_data$LUE_lai) | is.na(rf_data$LUE_lai))
+lue_evi_infinite_na_count <- sum(!is.finite(joined_df$LUE_evi) | is.na(joined_df$LUE_evi))
+lue_ndvi_infinite_na_count <- sum(!is.finite(joined_df$LUE_ndvi) | is.na(joined_df$LUE_ndvi))
+lue_lai_infinite_na_count <- sum(!is.finite(joined_df$LUE_lai) | is.na(joined_df$LUE_lai))
 
 # Display the results
 print(paste("Number of rows with infinite or NA values in LUE_evi:", lue_evi_infinite_na_count))
@@ -229,10 +286,56 @@ print(paste("Number of rows with infinite or NA values in LUE_lai:", lue_lai_inf
 
 
 # View rows with infinite or NA values in LUE_evi, LUE_ndvi, and LUE_lai
-View(rf_data[!is.finite(rf_data$LUE_evi) | is.na(rf_data$LUE_evi), ])
-View(rf_data[!is.finite(rf_data$LUE_ndvi) | is.na(rf_data$LUE_ndvi), ])
-View(rf_data[!is.finite(rf_data$LUE_lai) | is.na(rf_data$LUE_lai), ])
+View(joined_df[!is.finite(joined_df$LUE_evi) | is.na(joined_df$LUE_evi), ])
+View(joined_df[!is.finite(joined_df$LUE_ndvi) | is.na(joined_df$LUE_ndvi), ])
+View(joined_df[!is.finite(joined_df$LUE_lai) | is.na(joined_df$LUE_lai), ])
 
+# Note: Although joined_df has 2490 total rows, some rows have NA or infinite values in LUE_evi, LUE_ndvi, or LUE_lai.
+# For accurate LUE > 1 statistics, we exclude those rows using is.na().
+# This results in 2394 valid rows (i.e., rows with non-NA LUE values) for each method by default.
+# If you want to exclude infinite values as well, replace `!is.na()` with `is.finite()`.
+
+# Check for fAPAR values > 1 in each method
+cat("Rows with fAPAR_EVI > 1:", sum(joined_df$fAPAR_evi > 1, na.rm = TRUE), "\n")
+cat("Rows with fAPAR_NDVI > 1:", sum(joined_df$fAPAR_ndvi > 1, na.rm = TRUE), "\n") 
+cat("Rows with fAPAR_LAI > 1:", sum(joined_df$fAPAR_lai > 1, na.rm = TRUE), "\n")
+cat("Total number of row wqihtout NA infintie removals:", nrow(rf_data), "\n")
+sum(!apply(rf_data, 1, function(x) all(is.finite(x))))
+
+# Calculate percentage of LUE > 1 for each method
+lue_stats <- joined_df %>%
+  summarise(
+    # EVI-based LUE
+    pct_evi_gt1 = mean(LUE_evi > 1, na.rm = TRUE) * 100,
+    n_evi_gt1 = sum(LUE_evi > 1, na.rm = TRUE),
+    total_evi = sum(!is.na(LUE_evi)), ### total number of rows without infinite 
+    
+    # NDVI-based LUE
+    pct_ndvi_gt1 = mean(LUE_ndvi > 1, na.rm = TRUE) * 100,
+    n_ndvi_gt1 = sum(LUE_ndvi > 1, na.rm = TRUE),
+    total_ndvi = sum(!is.na(LUE_ndvi)),
+    
+    # LAI-based LUE
+    pct_lai_gt1 = mean(LUE_lai > 1, na.rm = TRUE) * 100,
+    n_lai_gt1 = sum(LUE_lai > 1, na.rm = TRUE),
+    total_lai = sum(!is.na(LUE_lai))
+  )
+
+# Print results
+cat("**EVI-based LUE:**\n")
+cat("  - % > 1:", round(lue_stats$pct_evi_gt1, 1), "%\n")
+cat("  - Count > 1:", lue_stats$n_evi_gt1, "/", lue_stats$total_evi, "\n\n")
+
+cat("**NDVI-based LUE:**\n")
+cat("  - % > 1:", round(lue_stats$pct_ndvi_gt1, 1), "%\n")
+cat("  - Count > 1:", lue_stats$n_ndvi_gt1, "/", lue_stats$total_ndvi, "\n\n")
+
+cat("**LAI-based LUE:**\n")
+cat("  - % > 1:", round(lue_stats$pct_lai_gt1, 1), "%\n")
+cat("  - Count > 1:", lue_stats$n_lai_gt1, "/", lue_stats$total_lai, "\n")
+
+summary(joined_df$fAPAR_ndvi[joined_df$LUE_ndvi > 1])
+summary(joined_df$fAPAR_lai[joined_df$LUE_lai > 1])
 
 # =============================================================================
 # RANDOM FOREST MODELING

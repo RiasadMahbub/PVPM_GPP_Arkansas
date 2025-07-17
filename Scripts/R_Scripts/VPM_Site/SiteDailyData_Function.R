@@ -122,4 +122,4 @@ sitecombineddata <- add_site_metadata(sitecombineddata)
 # =============================================================================
 str(sitecombineddata)
 head(sitecombineddata)
-View(sitecombineddata)
+#View(sitecombineddata)

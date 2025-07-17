@@ -7,6 +7,7 @@ library(randomForest)
 library(caTools)
 library(viridis)
 library(ggplot2)
+library(Metrics)
 #library(yardstick)
 
 #source("VIMeteoCheck.R")  # This loads all variables created in that script
@@ -81,8 +82,10 @@ rf_data <- joined_df[, c(  "GPP_site", "PAR_site", "fAPAR", "LUE", "VPD_site", "
                             "siteyear", "Es",  "rH_site", "dayl","cumulative_gdd",   
                            
                             "cumulative_dayl", "DOP",  "DAP",  "nir", 
-                            "MBWI",  "Lai", "MLSWI26",
-                           "TVI", "GDVI", "NDWI", "Variety", "IAVI"
+                            "MBWI",  "Lai", "MLSWI26", "blue", 
+                           "TVI", "GDVI", "NDWI", "Variety", "IAVI",
+                           "kNDVI", "NDVI", "VARI", "TSAVI", "RNDVI",
+                           "EVI", "ATSAVI", "LSWI"
                            #,"GCC", "NDDI","GSAVI", "GEMI",
                            #"MSAVI", "GOSAVI", "BWDRVI", "cumulative_IAVI"
                            #"GCC", "NDDI",  "MuWIR",
@@ -123,7 +126,9 @@ train_siteyears <- c("USOF12017", "USOF32017",
                      "USOF62018" ,"USOF52018"
                      ,"USHRC2015", "USHRA2015", "USBDC2015"
                      )
-val_siteyears<- c("USHRA2016",  "USHRA2017")
+
+#train_siteyears <- c("USBDA2016", "USOF22017", "USBDC2016", "USOF32017", "USHRC2015")
+val_siteyears<- c(" USHRA2016",  "USHRA2017")
 test_siteyears  <- c("USHRC2017", "USBDA2015", "USOF42018")
 
 
@@ -134,7 +139,9 @@ test <- subset(rf_data_scaled, siteyear %in% test_siteyears)
 val <- subset(rf_data_scaled, siteyear %in% val_siteyears)
 
 # Fit the Random Forest model
-train_model_input <- subset(train, select = -c(siteyear, GPP_site, PAR_site, fAPAR,Lai, IAVI
+train_model_input <- subset(train, select = -c(siteyear, GPP_site, PAR_site, fAPAR,Lai, IAVI, kNDVI,
+                                               NDVI, VARI, TSAVI, RNDVI,
+                                               EVI, ATSAVI, LSWI
                                                #, ,DOP,  Lai, EVI, NDVI,Variety
                                                ))
 rf_model <- randomForest(LUE ~ ., data = train_model_input, ntree = 100, do.trace = 10, importance = TRUE)
@@ -206,9 +213,153 @@ ggplot(val, aes(x = LUE, y = predicted_LUE, color = PAR_site)) +
 
 # Predict LUE (Light Use Efficiency) using the trained random forest model on scaled data
 rf_data$LUEpredicted <- predict(rf_model, newdata = rf_data_scaled)
-
 # Calculate predicted GPP (Gross Primary Productivity) using the light-use efficiency model:
 rf_data$GPP_predicted <- rf_data$LUEpredicted * rf_data$PAR_site * rf_data$fAPAR
+
+
+#===================================================
+#Model Parameterization
+#===================================================
+# Assuming rf_data_scaled is your full dataset with feature columns + LUE + siteyear etc.
+#===================================================
+# Model Parameterization with Checks
+#===================================================
+
+library(randomForest)
+library(dplyr)
+library(Metrics)  # For mae, rmse
+
+# Assuming rf_data_scaled is your full dataset with features + LUE + siteyear etc.
+
+# Your siteyear splits
+train_siteyears <- c("USOF12017", "USOF32017", "USBDA2016", "USBDC2016", "USOF22017", 
+                     "USHRC2016", "USOF62018", "USOF52018", "USHRC2015", "USHRA2015", "USBDC2015")
+val_siteyears <- c("USHRA2016", "USHRA2017")
+test_siteyears <- c("USHRC2017", "USBDA2015", "USOF42018")
+
+# Subset data by siteyear splits
+train <- subset(rf_data_scaled, siteyear %in% train_siteyears)
+val <- subset(rf_data_scaled, siteyear %in% val_siteyears)
+test <- subset(rf_data_scaled, siteyear %in% test_siteyears)
+
+# Check uniqueness and overlap of siteyears (should be empty if splits are correct)
+cat("Overlap Train-Val:", intersect(train_siteyears, val_siteyears), "\n")
+cat("Overlap Train-Test:", intersect(train_siteyears, test_siteyears), "\n")
+cat("Overlap Val-Test:", intersect(val_siteyears, test_siteyears), "\n")
+
+cat("Train siteyears unique:", unique(train$siteyear), "\n")
+cat("Val siteyears unique:", unique(val$siteyear), "\n")
+cat("Test siteyears unique:", unique(test$siteyear), "\n")
+
+# Prepare training inputs - remove unwanted columns, keep LUE as target
+train_x <- train %>% select(-siteyear, -GPP_site, -PAR_site, -fAPAR, -Lai, -IAVI, 
+                            -kNDVI, -NDVI, -VARI, -TSAVI, -RNDVI, -EVI, -ATSAVI, -LSWI)
+train_y <- train$LUE
+
+val_x <- val %>% select(names(train_x))
+val_y <- val$LUE
+
+test_x <- test %>% select(names(train_x))
+test_y <- test$LUE
+
+# Check number and names of features
+cat("Number of features in train_x:", ncol(train_x), "\n")
+cat("Feature names:\n")
+print(names(train_x))
+
+# Function to calculate NSE (Nash-Sutcliffe Efficiency)
+nse <- function(obs, pred) {
+  1 - sum((obs - pred)^2) / sum((obs - mean(obs))^2)
+}
+
+# Initialize results dataframe
+results <- data.frame(mtry=integer(), 
+                      train_mae=double(), train_rmse=double(), train_bias=double(), train_r2=double(), train_nse=double(),
+                      val_mae=double(), val_rmse=double(), val_bias=double(), val_r2=double(), val_nse=double())
+
+# Define max mtry as number of predictors in train_x
+max_mtry <- ncol(train_x)
+cat("Max mtry (number of features):", max_mtry, "\n")
+
+set.seed(123) # For reproducibility
+
+for (mtry_val in 1:max_mtry) {
+  # Train Random Forest model
+  rf_model <- randomForest(x=train_x, y=train_y, ntree=100, mtry=mtry_val, importance=FALSE)
+  
+  # Predictions
+  pred_train <- predict(rf_model, train_x)
+  pred_val <- predict(rf_model, val_x)
+  
+  # Training metrics
+  train_mae <- mae(train_y, pred_train)
+  train_rmse <- rmse(train_y, pred_train)
+  train_bias <- mean(pred_train - train_y)
+  train_r2 <- summary(lm(train_y ~ pred_train))$r.squared
+  train_nse <- nse(train_y, pred_train)
+  
+  # Validation metrics
+  val_mae <- mae(val_y, pred_val)
+  val_rmse <- rmse(val_y, pred_val)
+  val_bias <- mean(pred_val - val_y)
+  val_r2 <- summary(lm(val_y ~ pred_val))$r.squared
+  val_nse <- nse(val_y, pred_val)
+  
+  # Save results
+  results <- rbind(results, data.frame(
+    mtry = mtry_val,
+    train_mae = train_mae, train_rmse = train_rmse, train_bias = train_bias, train_r2 = train_r2, train_nse = train_nse,
+    val_mae = val_mae, val_rmse = val_rmse, val_bias = val_bias, val_r2 = val_r2, val_nse = val_nse
+  ))
+  
+  cat("mtry =", mtry_val, "Train MAE:", round(train_mae,3), "Val MAE:", round(val_mae,3), "\n")
+}
+
+# View tuning results
+print(results)
+
+# Find best mtry based on validation MAE (or another metric)
+best_mtry <- results$mtry[which.min(results$val_mae)]
+cat("Best mtry:", best_mtry, "\n")
+
+# Retrain best model on train+val combined for final test prediction
+trainval <- rbind(train, val)
+trainval_x <- trainval %>% select(names(train_x))
+trainval_y <- trainval$LUE
+
+final_rf_model <- randomForest(x=trainval_x, y=trainval_y, ntree=100, mtry=best_mtry)
+
+# Predict on test
+pred_test <- predict(final_rf_model, test_x)
+
+# Test metrics
+test_mae <- mae(test_y, pred_test)
+test_rmse <- rmse(test_y, pred_test)
+test_bias <- mean(pred_test - test_y)
+test_r2 <- summary(lm(test_y ~ pred_test))$r.squared
+test_nse <- nse(test_y, pred_test)
+
+cat("Test set performance for best mtry =", best_mtry, "\n")
+cat("MAE:", round(test_mae,3), "\n")
+cat("RMSE:", round(test_rmse,3), "\n")
+cat("Bias:", round(test_bias,3), "\n")
+cat("R²:", round(test_r2,3), "\n")
+cat("NSE:", round(test_nse,3), "\n")
+
+# Optionally, plot test predictions vs observations
+library(ggplot2)
+ggplot(data.frame(Observed=test_y, Predicted=pred_test), aes(x=Observed, y=Predicted)) +
+  geom_point(color="blue") +
+  geom_smooth(method="lm", color="red") +
+  labs(title=paste("Test Set Predictions - Random Forest (mtry =", best_mtry, ")"),
+       x="Observed LUE", y="Predicted LUE") +
+  annotate("text", x=min(test_y), y=max(pred_test),
+           label=paste0("R² = ", round(test_r2,2), "\nMAE = ", round(test_mae,2)),
+           hjust=0, vjust=1, size=5)
+
+
+
+
 
 
 

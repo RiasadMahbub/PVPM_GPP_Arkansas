@@ -144,6 +144,43 @@ fix_LAI_less_than_2_5_grow <- function(meteo_list, DOP_values, harvest_date = "2
   return(fixed_list)
 }
 
+fix_LAI_less_than_2_5_grow_site <- function(meteo_list, DOP_values, harvest_date = "2020-09-01") {
+  harvest_doy <- yday(ymd(harvest_date))
+  
+  # Define the exact site-year names (with "_Meteo") to apply fix
+  fix_sites <- c("USHRA_2015_Meteo", "USHRA_2016_Meteo", "USHRA_2017_Meteo",
+                 "USHRC_2015_Meteo", "USHRC_2017_Meteo", "USBDC_2015_Meteo",
+                 "USBDC_2016_Meteo", "USBDA_2016_Meteo", "USOF3_2017_Meteo", "USOF2_2017_Meteo")
+  
+  fixed_list <- lapply(names(meteo_list), function(site_name) {
+    df <- meteo_list[[site_name]]
+    
+    # Skip if this site-year is not in the list
+    if (!(site_name %in% fix_sites)) return(df)
+    
+    # Extract site key (first 10 characters of the name)
+    site_key <- substr(site_name, 1, 10)
+    
+    # Get DOP
+    dop <- DOP_values[site_key]
+    if (is.na(dop)) return(df)
+    
+    # Apply the correction
+    df <- df %>%
+      mutate(
+        DOY = yday(Date),
+        Lai = ifelse(DOY > (dop + 20) & DOY < harvest_doy & Lai < 2.1, NA, Lai)
+      )
+    
+    return(df)
+  })
+  
+  names(fixed_list) <- names(meteo_list)
+  return(fixed_list)
+}
+
+
+
 # =============================================================================
 # PROCESS VEGETATION INDEX (VI) DATA
 # =============================================================================

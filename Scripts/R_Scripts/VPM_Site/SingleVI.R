@@ -60,14 +60,24 @@ stopifnot(length(all_siteyears) == 16)  # Verify we have 16 site-years
 
 # 2. CREATE DATA SPLITS ======================================================
 
-# Fixed test set (3 random site-years)
-test_siteyears <- sample(all_siteyears, 3)  
+# Define fixed train, validation, and test site-years (replace with your full lists)
+train_siteyears <- c("USOF12017", "USOF32017", "USBDA2016", "USBDC2016", 
+                     "USOF22017", "USHRC2016", "USOF62018", "USOF52018",
+                     "USHRC2015", "USHRA2015", "USBDC2015")
 
-# Remaining 13 site-years for training/validation
-train_val_siteyears <- setdiff(all_siteyears, test_siteyears)  
+val_siteyears <- c("USHRA2016", "USHRA2017", "USOF42018", "USOF72017")  # Example validation set
 
-# Generate all possible 11/2 splits (78 combinations) for cross-validation
-val_folds <- combn(train_val_siteyears, 2, simplify = FALSE)  
+test_siteyears <- c("USOF82018", "USHRC2018", "USOF92018")  # Example fixed test set
+
+# Combine train and validation sets for model training and validation (13 site-years total)
+train_val_siteyears <- c(train_siteyears, val_siteyears)
+
+# Generate folds for cross-validation using fixed validation folds (2 site-years each)
+# Here, we generate combinations of validation folds from the val_siteyears pool
+val_folds <- combn(val_siteyears, 2, simplify = FALSE)
+
+# Instead of generating all combinations from the whole training set,
+# we use these fixed validation folds and the rest of train_val_siteyears minus the val_fold as training
 
 # 3. MODEL EVALUATION FUNCTIONS ==============================================
 
