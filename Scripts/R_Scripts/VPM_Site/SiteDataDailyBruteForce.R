@@ -169,6 +169,7 @@ USHRA2015<-dplyr::filter(USHRA2015, DOY>=MODISdoy)
 USHRA2015.daily <- aggregate(cbind(GPP_modeled,PAR_Regression, Ta_REddyProc, VPD_REddyProc, rH_REddyProc) ~ Date,  USHRA2015, mean)
 #Second to daily
 USHRA2015.daily$GPP_modeled<- ( USHRA2015.daily$GPP_modeled)* 1e-6*86400*12.011
+
 USHRA2015.daily$PAR_Regression<- ( USHRA2015.daily$PAR_Regression)* 1e-6*86400
 ## Scale to 8 day scale
 plot( USHRA2015.daily$Date,  USHRA2015.daily$GPP_modeled)
