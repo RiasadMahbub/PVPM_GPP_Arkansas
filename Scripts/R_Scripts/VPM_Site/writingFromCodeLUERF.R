@@ -31,15 +31,20 @@ rf_data$gdd_bin_broad <- cut(
   labels = paste(head(broad_breaks, -1), broad_breaks[-1] - 1, sep = "–")
 )
 
-# Compute mean LUE in each bin
-lue_means_broad <- tapply(rf_data$LUE, rf_data$gdd_bin_broad, mean, na.rm = TRUE)
+# Compute mean and sd separately
+lue_mean <- tapply(rf_data$LUE, rf_data$gdd_bin_broad, mean, na.rm = TRUE)
+lue_sd   <- tapply(rf_data$LUE, rf_data$gdd_bin_broad, sd, na.rm = TRUE)
 
-# Print mean LUEs
-cat("\n--- Average LUE for Broad GDD Bins ---\n")
-for (i in seq_along(lue_means_broad)) {
-  gdd_range <- names(lue_means_broad)[i]
-  cat(sprintf("The average LUE of %s \u2103 cumulative GDD is %.4f (gC mol\u207B\u00B9 photon)\n",
-              gdd_range, lue_means_broad[i]))
+# Print mean ± sd
+cat("\n--- Average LUE ± SD for Broad GDD Bins (2 significant figures) ---\n")
+for (i in seq_along(lue_mean)) {
+  gdd_range <- names(lue_mean)[i]
+  cat(sprintf(
+    "The average LUE of %s ℃ cumulative GDD is %s ± %s (gC mol⁻¹ photon)\n",
+    gdd_range,
+    signif(lue_mean[i], 2),
+    signif(lue_sd[i], 2)
+  ))
 }
 
 # =======================================
@@ -52,10 +57,14 @@ min_lue <- min(rf_data$LUE, na.rm = TRUE)
 min_lue_gdd <- rf_data$cumulative_gdd[which.min(rf_data$LUE)]
 
 cat("\n--- Absolute Maximum and Minimum LUE ---\n")
-cat(sprintf("The maximum LUE is %.4f (gC mol\u207B\u00B9 photon) at cumulative GDD of %.2f \u2103\n", 
-            max_lue, max_lue_gdd))
-cat(sprintf("The minimum LUE is %.4f (gC mol\u207B\u00B9 photon) at cumulative GDD of %.2f \u2103\n", 
-            min_lue, min_lue_gdd))
+cat(sprintf(
+  "The maximum LUE is %s (gC mol\u207B\u00B9 photon) at cumulative GDD of %s \u2103\n", 
+  signif(max_lue, 2), signif(max_lue_gdd, 2)
+))
+cat(sprintf(
+  "The minimum LUE is %s (gC mol\u207B\u00B9 photon) at cumulative GDD of %s \u2103\n", 
+  signif(min_lue, 2), signif(min_lue_gdd, 2)
+))
 
 # =======================================
 # 4. Average LUE in Fine GDD Bins (10 GDD)
@@ -92,10 +101,15 @@ max_bin <- bin_labels[which.max(binwise_avg_lue)]
 min_bin <- bin_labels[which.min(binwise_avg_lue)]
 
 cat("\n--- Maximum and Minimum Average LUE in Fine GDD Bins ---\n")
-cat(sprintf("The average maximum LUE is %.4f (gC mol\u207B\u00B9 photon) in GDD bin %s\n", 
-            max_avg_lue, max_bin))
-cat(sprintf("The average minimum LUE is %.4f (gC mol\u207B\u00B9 photon) in GDD bin %s\n", 
-            min_avg_lue, min_bin))
+cat(sprintf(
+  "The average maximum LUE is %s (gC mol\u207B\u00B9 photon) in GDD bin %s\n", 
+  signif(max_avg_lue, 2), max_bin
+))
+cat(sprintf(
+  "The average minimum LUE is %s (gC mol\u207B\u00B9 photon) in GDD bin %s\n", 
+  signif(min_avg_lue, 2), min_bin
+))
+
 
 # =======================================
 # 6. Define Site-Year Groups
@@ -319,4 +333,71 @@ max_gpp_results %>%
   pull(summary_text) %>%
   cat(sep = "\n\n")
 
+
+
+#-----------------------------------------------------------------------
+#High LUE in low FAPAR values------------------------------------------
+#-----------------------------------------------------------------------
+# Average fAPAR_evi when LUE_evi > 1
+avg_fapar_evi <- mean(rf_data$fAPAR_evi[rf_data$LUE_evi > 1], na.rm = TRUE)
+cat("Average fAPAR (EVI) when LUE_evi > 1:", avg_fapar_evi, "\n")
+
+# Average fAPAR_ndvi when LUE_ndvi > 1
+avg_fapar_ndvi <- mean(rf_data$fAPAR_ndvi[rf_data$LUE_ndvi > 1], na.rm = TRUE)
+cat("Average fAPAR (NDVI) when LUE_ndvi > 1:", avg_fapar_ndvi, "\n")
+
+# Average fAPAR_lai when LUE_lai > 1
+avg_fapar_lai <- mean(rf_data$fAPAR_lai[rf_data$LUE_lai > 1], na.rm = TRUE)
+cat("Average fAPAR (LAI) when LUE_lai > 1:", avg_fapar_lai, "\n")
+
+
+
+
+#---------------------------------------
+#Importance plot
+#--------------------------------------
+# Variables of interest
+library(dplyr)
+library(tidyr)
+
+# Variables of interest
+vars_of_interest <- c("DOP", "DAP", "VPD_site", "rH_site", "cumulative_gdd")
+
+# Summarize importance from your existing data
+summary_importance <- importance_long %>%
+  filter(Variable %in% vars_of_interest) %>%
+  pivot_wider(names_from = Metric, values_from = Value) %>%
+  mutate(TotalImportance = `%IncMSE` + Gini)
+
+# Print descriptive lines
+summary_importance %>%
+  rowwise() %>%
+  mutate(line = paste0("The importance of ", Variable, 
+                       " is %IncMSE = ", round(`%IncMSE`, 2),
+                       ", Gini = ", round(Gini, 2),
+                       ", TotalImportance = ", round(TotalImportance, 2))) %>%
+  pull(line) %>%
+  cat(sep = "\n")
+
+
+
+#--------------------
+#Features list 
+#------------------
+# Optional: rename to match your output style
+rename_map <- c("cumulative_gdd"="GDD_cum",
+                "dayl"="dayl_cum",
+                "rH_site"="RH",
+                "VPD_site"="VPD",
+                "Tair_site"="T_air")
+
+# Apply renaming
+features_clean <- sapply(best_features_lue, function(x) ifelse(x %in% names(rename_map), rename_map[x], x))
+
+# Concatenate as a single string
+# Concatenate with comma + space
+feature_string <- paste(features_clean, collapse = ", ")
+
+# Print in the desired format
+cat(paste0("LUE_RF=f_(random forest)  (", feature_string, ")"))
 

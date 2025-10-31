@@ -13,6 +13,10 @@ library(caTools)       # For data splitting tools
 library(viridis)       # For color scales
 library(ggplot2)       # For data visualization
 library(dplyr)         # For data manipulation
+library(ggplot2)
+library(patchwork)
+library(ggplot2)
+library(patchwork)
 
 
 # Optional: Load external debugging script
@@ -120,9 +124,9 @@ cat("Rows with LUE > 1:", sum(joined_df$LUE > 1, na.rm = TRUE), "\n")
 # View(joined_df[!is.finite(joined_df$LUE) | is.na(joined_df$LUE), ])
 
 # === Exploratory Views ===
-View(rf_data[rf_data$fAPAR > 1, ])
-View(rf_data[!is.finite(rf_data$LUE) | is.na(rf_data$LUE), ])
-View(rf_data[rf_data$LUE > 1, ])
+# View(rf_data[rf_data$fAPAR > 1, ])
+# View(rf_data[!is.finite(rf_data$LUE) | is.na(rf_data$LUE), ])
+# View(rf_data[rf_data$LUE > 1, ])
 
 # === Histograms to Explore Distributions ===
 hist(rf_data$LUE_evi, main = "Distribution of LUE based on EVI", xlab = "LUE (gC mol⁻¹ photon)", col = "gray", breaks = 20)
@@ -158,11 +162,6 @@ hist_plot <- function(data, var, title) {
 hist_plot(rf_data, "LUE_evi", "Distribution of LUE (EVI-based)")
 hist_plot(rf_data, "LUE_ndvi", "Distribution of LUE (NDVI-based)")
 hist_plot(rf_data, "LUE_lai", "Distribution of LUE (LAI-based)")
-
-
-library(ggplot2)
-library(patchwork)
-
 # Helper function to generate histogram with a title and label
 hist_plot <- function(data, var, title) {
   ggplot(data, aes_string(x = var)) +
@@ -188,7 +187,7 @@ combined_plot <- (p1 / p2 / p3) +
 
 # Add shared x-axis label
 combined_plot <- combined_plot & labs(x = "Light Use Efficiency (gC mol⁻¹ photon)")
-
+combined_plot
 # Save the figure
 ggsave(
   filename = "C:/Users/rbmahbub/Documents/RProjects/GapfillingOtherRiceSites/Figure/PaperFigure/EVINDVILAILUE.png",
@@ -197,10 +196,6 @@ ggsave(
   height = 15,
   dpi = 300
 )
-
-
-library(ggplot2)
-library(patchwork)
 
 # Function to generate conditional fAPAR histograms by LUE threshold
 fapar_hist_plot <- function(data, fapar_var, lue_var, title) {
@@ -285,10 +280,10 @@ print(paste("Number of rows with infinite or NA values in LUE_ndvi:", lue_ndvi_i
 print(paste("Number of rows with infinite or NA values in LUE_lai:", lue_lai_infinite_na_count))
 
 
-# View rows with infinite or NA values in LUE_evi, LUE_ndvi, and LUE_lai
-View(joined_df[!is.finite(joined_df$LUE_evi) | is.na(joined_df$LUE_evi), ])
-View(joined_df[!is.finite(joined_df$LUE_ndvi) | is.na(joined_df$LUE_ndvi), ])
-View(joined_df[!is.finite(joined_df$LUE_lai) | is.na(joined_df$LUE_lai), ])
+# # View rows with infinite or NA values in LUE_evi, LUE_ndvi, and LUE_lai
+# View(joined_df[!is.finite(joined_df$LUE_evi) | is.na(joined_df$LUE_evi), ])
+# View(joined_df[!is.finite(joined_df$LUE_ndvi) | is.na(joined_df$LUE_ndvi), ])
+# View(joined_df[!is.finite(joined_df$LUE_lai) | is.na(joined_df$LUE_lai), ])
 
 # Note: Although joined_df has 2490 total rows, some rows have NA or infinite values in LUE_evi, LUE_ndvi, or LUE_lai.
 # For accurate LUE > 1 statistics, we exclude those rows using is.na().
@@ -337,6 +332,9 @@ cat("  - Count > 1:", lue_stats$n_lai_gt1, "/", lue_stats$total_lai, "\n")
 summary(joined_df$fAPAR_ndvi[joined_df$LUE_ndvi > 1])
 summary(joined_df$fAPAR_lai[joined_df$LUE_lai > 1])
 
+
+# =============================================================================
+# =============================================================================
 # =============================================================================
 # RANDOM FOREST MODELING
 # =============================================================================

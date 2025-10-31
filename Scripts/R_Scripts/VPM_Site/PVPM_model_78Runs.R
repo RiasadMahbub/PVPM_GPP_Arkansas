@@ -2,7 +2,7 @@
 ## Main Analysis Script for LUE and GPP Modeling
 ## Using Random Forest with Cross-Validation
 #############################################
-
+rf_data <- joined_df
 # Load necessary libraries
 library(ggplot2)
 library(dplyr)
@@ -117,18 +117,50 @@ predictor_columns <- c("GPP_site", "PAR_site", "fAPAR", "LUE", "VPD_site", "Tair
                        "TVI", "GDVI", "NDWI", "IAVI", "kNDVI", "NDVI", "VARI", "TSAVI",
                        "RNDVI", "IPVI", "PI", "EVI", "ATSAVI", "LSWI", "blue")
 
+
+predictor_columns <- c("GPP_site", "PAR_site", "fAPAR", "LUE", 
+  "IAVI"  , "VARI", "TVI","ExG","VPD_site", "dayl","rH_site",     
+                        "Tair_site" ,"DAP"     , "DBSI","TGI", "NMDI"   ,"MLSWI26",  "MuWIR"  ,       
+                        "GARI","cumulative_gdd" ,"swir1","NDDI","siteyear", "DOP","Es", "RI4XS", 
+  "Lai",
+  "siteyeardate","Et", 
+  #"dayl","cumulative_gdd", 
+  "AWEInsh",
+  "Variety",
+  "ATSAVI",
+  #"VARI",
+  "EVI", "LSWI" ,"TSAVI", "RNDVI", "kNDVI", "EVI",  "cumulative_dayl",
+  "NDYI", "EMBI", "BCC", "DOP" )
 # Filter and select data, ensuring 'siteyeardate' is kept for merging predictions
 all_relevant_columns <- unique(c("siteyeardate", predictor_columns))
 
-rf_data <- joined_df %>%
+# Keep full dataset
+rf_data <- joined_df
+rf_data_full <- rf_data   # <- all columns preserved
+
+rf_data  <- joined_df %>%
   dplyr::select(all_of(all_relevant_columns)) %>%
   dplyr::filter(is.finite(LUE) & !is.na(LUE))
 
 # Columns to remove from modeling (augmented to include siteyeardate and other non-predictors)
 cols_to_remove_for_model <- c("siteyear", "GPP_site", "PAR_site", "fAPAR", "Lai",
-                              "VARI", "ATSAVI", "LSWI", "kNDVI", "dayl",
+                              "IAVI", "VARI", 
+                              "ATSAVI", "LSWI", "kNDVI", "dayl",
                               "IPVI", "PI", "TVI", "MLSWI26", "RNDVI", "EVI", "MBWI",
                               "siteyeardate") # Add siteyeardate to be excluded from RF predictors
+# Columns to remove from modeling (augmented to include siteyeardate and other non-predictors)
+cols_to_remove_for_model <- c("siteyear", "GPP_site", "PAR_site", "fAPAR", "Lai",
+                              "siteyeardate",
+                              #"dayl","cumulative_gdd", "DOP"
+                              #"AWEInsh",#Es, 
+                              "Variety",
+                              "ATSAVI",
+                              #"VARI",
+                              "EVI", "LSWI" ,"TSAVI", "RNDVI", "kNDVI", "EVI",  "cumulative_dayl",
+                              #"MuWIR",
+                              #"NMDI", 
+                              "GARI", "Es","TGI", "NDDI",
+                              "NDYI", "EMBI", "BCC" ) # Add siteyeardate to be excluded from RF predictors
 
 # Site-year groups
 # These are now directly the 'original' names from the mock data section
@@ -210,7 +242,7 @@ for (i in 1:num_combinations) {
   )
   
   # Store variable importance for this fold
-  all_lue_importance_measures[[i]] <- importance(rf_model)
+  all_lue_importance_measures[[i]] <- randomForest::importance(rf_model)
   
   # Predict LUE
   current_train_set$LUE_pred <- predict(rf_model, newdata = train_model_input)
@@ -686,4 +718,8 @@ if (!is.null(mean_importance) && nrow(mean_importance) > 0) {
 } else {
   cat("\nCannot plot variable importance: 'mean_importance' dataframe is empty or NULL.\n")
 }
+
+colnames(rf_data)
+mean_importance$Variable
+mean_importance
 

@@ -19,8 +19,8 @@ calculate_GPP <- function(Ts, LUEmax, Ws, PAR, FPAR) {
 # ---- Constants ----
 Tmin <- -1 
 Tmax <- 48 
-Topt <- 30.02308
-LUEmax <- 0.06038462
+Topt <- 30
+LUEmax <- 0.05
 
 # ---- Step 1: Compute LSWImax per siteyear ----
 LSWImax_df <- rf_data %>%
@@ -128,3 +128,9 @@ summary(rf_data$GPPpredictedVPM)
 summary(rf_data$GPPpredictedVPM_EVI)
 hist(rf_data$fAPAR)
 hist(rf_data$fAPAR_evi)
+
+hist(rf_data$GPPpredictedVPM)
+hist(rf_data$Tair_site)
+hist(rf_data$LSWI)
+hist(rf_data$fAPAR)
+plot(rf_data$GPP_site, rf_data$GPPpredictedVPM)

@@ -458,43 +458,43 @@ years_with_14_columns <- sapply(meteo_files[files_with_14_columns], extract_year
 cat("Years missing in the files with 14 columns:\n")
 print(years_with_14_columns)
 
-
-# Load required packages
-library(ggplot2)
-library(patchwork)
-library(dplyr)
-
-# Generate a list of plots
-plot_list <- lapply(1:16, function(i) {
-  df <- meteo_df_2015_2018ni[[i]]
-  ggplot(df, aes(x = Date, y = Lai)) +
-    geom_line(color = "darkgreen", size = 1) +
-    labs(
-      title = paste("Site", i),
-      x = "Date",
-      y = "LAI"
-    ) +
-    theme_minimal() +
-    theme(
-      plot.title = element_text(size = 12, face = "bold"),
-      axis.title.x = element_text(size = 10),
-      axis.title.y = element_text(size = 10),
-      axis.text = element_text(size = 8)
-    )
-})
-
-# Arrange in 4 columns × 4 rows
-combined_plot <- wrap_plots(plotlist = plot_list, ncol = 4)
-
-# Save the figure
-output_path <- "C:/Users/rbmahbub/Documents/RProjects/GapfillingOtherRiceSites/Figure/LAI_data/LAI_16sites_grid.png"
-
-ggsave(
-  filename = output_path,
-  plot = combined_plot,
-  width = 16,
-  height = 12,
-  dpi = 300
-)
-
-
+# 
+# # Load required packages
+# library(ggplot2)
+# library(patchwork)
+# library(dplyr)
+# 
+# # Generate a list of plots
+# plot_list <- lapply(1:16, function(i) {
+#   df <- meteo_df_2015_2018ni[[i]]
+#   ggplot(df, aes(x = Date, y = Lai)) +
+#     geom_line(color = "darkgreen", size = 1) +
+#     labs(
+#       title = paste("Site", i),
+#       x = "Date",
+#       y = "LAI"
+#     ) +
+#     theme_minimal() +
+#     theme(
+#       plot.title = element_text(size = 12, face = "bold"),
+#       axis.title.x = element_text(size = 10),
+#       axis.title.y = element_text(size = 10),
+#       axis.text = element_text(size = 8)
+#     )
+# })
+# 
+# # Arrange in 4 columns × 4 rows
+# combined_plot <- wrap_plots(plotlist = plot_list, ncol = 4)
+# 
+# # Save the figure
+# output_path <- "C:/Users/rbmahbub/Documents/RProjects/GapfillingOtherRiceSites/Figure/LAI_data/LAI_16sites_grid.png"
+# 
+# ggsave(
+#   filename = output_path,
+#   plot = combined_plot,
+#   width = 16,
+#   height = 12,
+#   dpi = 300
+# )
+# 
+# 

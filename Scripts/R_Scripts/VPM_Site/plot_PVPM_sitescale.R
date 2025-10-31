@@ -16,8 +16,6 @@
 # =============================================================================
 # Core Tidyverse packages (automatically includes ggplot2, dplyr, tidyr, readr, stringr, etc.)
 library(tidyverse)
-
-# Visualization extensions
 library(ggpubr)
 library(gridExtra)
 library(patchwork)
@@ -37,6 +35,7 @@ library(broom)       # Needed for 'augment'
 # File and data handling
 library(readxl)
 library(png)
+library(ggpubfigs)
 
 # Fonts (for Windows devices)
 library(extrafont)
@@ -51,6 +50,10 @@ base_font_size <- 18
 # Strip 'formattable' class and convert to numeric
 rf_data$GPP_site <- as.numeric(rf_data$GPP_site)
 rf_data$GPP_predicted <- as.numeric(rf_data$GPP_predicted)
+rf_data$VPD_site  <- as.numeric(rf_data$VPD_site)
+rf_data$rH_site   <- as.numeric(rf_data$rH_site)
+rf_data$Tair_site <- as.numeric(rf_data$Tair_site)
+
 
 
 # 1. FAPARLAI====================================================
@@ -181,7 +184,7 @@ LUEvariety <- ggplot(rf_data, aes(x = Variety, y = LUE, fill = Variety)) +
 # Combine with LUEtimeseries plot
 combined_plot <- LUEtimeseries + LUEvariety +
   plot_annotation(tag_levels = 'A')
-
+combined_plot
 # Save the plot
 ggsave(
   filename = "LUEtimeseriesVariety.png",
@@ -257,11 +260,8 @@ ggsave(filename = "RFGPPpredictalldata.png",
 train_siteyears <- c("USOF22017", "USOF12017", "USBDA2016", "USBDC2016", 
                      "USHRC2016", "USOF62018", "USOF52018", "USHRC2015", 
                      "USHRA2015", "USBDC2015", "USOF32017")
-
 test_siteyears  <- c("USHRC2017", "USBDA2015", "USOF42018", 
                      "USHRA2016", "USHRA2017")
-
-
 # ---- Plot: Training Set ----
 train_data <- rf_data %>% dplyr::filter(siteyear %in% train_siteyears)
 p_train <- ggplot(data = train_data, aes(x = GPP_site, y = GPP_predicted, col = DAP)) +
@@ -334,7 +334,6 @@ p_test_lab <- p_test +
 
 # Create a blank plot for the 4th cell
 blank_plot <- ggplot() + theme_void()
-
 # Now combine into a 2x2 layout
 combined_layout <- (p_all_lab + p_train_lab) / 
   (p_test_lab + blank_plot) +
@@ -344,7 +343,7 @@ combined_layout <- (p_all_lab + p_train_lab) /
       plot.margin = ggplot2::margin(1, 1, 1, 1, unit = "cm")
     )
   )
-
+combined_layout
 # Save the combined plot
 ggsave(
   filename = "testrainall_2x2.png",
@@ -406,10 +405,8 @@ ggsave(filename = "RFLUEpredictalldata.png",
 train_siteyears <- c("USOF22017", "USOF12017", "USBDA2016", "USBDC2016", 
                      "USHRC2016", "USOF62018", "USOF52018", "USHRC2015", 
                      "USHRA2015", "USBDC2015", "USOF32017")
-
 test_siteyears  <- c("USHRC2017", "USBDA2015", "USOF42018", 
                      "USHRA2016", "USHRA2017")
-
 # ---- Plot: Training Set ----
 train_data <- rf_data %>% dplyr::filter(siteyear %in% train_siteyears)
 
@@ -533,7 +530,8 @@ get_metrics_text <- function(obs, pred, x, y, size = 16) {
   
   annotate("text", x = x, y = y, label = txt, size = size, hjust = 0)
 }
-
+rf_data$GPPpredictedVPM_EVI<-as.numeric(rf_data$GPPpredictedVPM_EVI)
+rf_data$GPP_site <- as.numeric(rf_data$GPP_site)
 # GPP VPM Predicted scatter plot
 p_vpm <- ggplot(data = rf_data, aes(x = GPP_site, y = GPPpredictedVPM_EVI, col = DAP)) +
   geom_abline(intercept = 0, slope = 1, size = 5, col = "red", linetype = "dashed") +
@@ -585,6 +583,8 @@ slope <- as.numeric(summary_results_df[1, ]$Final_VI_PAR_Slope)
 # Predict GPP using IAVI
 rf_data$GPP_predicted_VI <- intercept + slope * (rf_data$IAVI * rf_data$PAR_site)
 
+rf_data$GPP_predicted_VI<-as.numeric(rf_data$GPP_predicted_VI)
+rf_data$GPP_site <- as.numeric(rf_data$GPP_site)
 # Create the plot
 p_all_VI <- ggplot(data = rf_data, aes(x = GPP_site, y = GPP_predicted_VI, col = DAP)) +
   geom_abline(intercept = 0, slope = 1, size = 1.5, col = "red", linetype = "dashed") +
@@ -636,8 +636,8 @@ calc_kendall <- function(x, y) {
   cor(x, y, method = "kendall", use = "complete.obs")
 }
 # Colors
-scatter_colors <- c("LUE" = wes_palette("Zissou1")[1],
-                    "LUEpredicted" = wes_palette("Zissou1")[3])
+scatter_colors <- c("LUE" = wes_palette("Darjeeling2")[2],
+                    "LUEpredicted" = wes_palette("Chevalier1")[1])
 
 # Axis label
 lue_lab <- expression("Light Use Efficiency (gC mol"^{-1}~"photon)")
@@ -693,15 +693,15 @@ plot_dual <- function(xvar, xlab, show_y = FALSE, show_legend = FALSE) {
   vjust_pred <- 1.5
   
   # Custom position logic
-  if (xvar %in% c("rH_site", "nir", "MLSWI26", "GDVI", "Tair_site")) {
+  if (xvar %in% c("rH_site", "DBSI", "MLSWI26", "IAVI", "Tair_site")) {
     xpos <- -Inf
     ypos_lue <- Inf
     ypos_pred <- Inf
     hjust_val <- -0.1
   } else if (xvar == "VPD_site") {
-    xpos <- 12  # adjust if needed
-    ypos_lue <- 0.8
-    ypos_pred <- 0.75
+    xpos <- 11  # adjust if needed
+    ypos_lue <- 0.85
+    ypos_pred <- 0.80
     hjust_val <- 0
     vjust_lue <- 0
     vjust_pred <- 0
@@ -736,7 +736,8 @@ plot_dual <- function(xvar, xlab, show_y = FALSE, show_legend = FALSE) {
              color = scatter_colors["LUE"],
              hjust = hjust_val, 
              vjust = vjust_lue, 
-             size = 3.5) +
+             size = 5,                 # increase size
+             fontface = "bold") +      # make bold
     annotate("text", 
              x = xpos, 
              y = ypos_pred,
@@ -744,7 +745,8 @@ plot_dual <- function(xvar, xlab, show_y = FALSE, show_legend = FALSE) {
              color = scatter_colors["LUEpredicted"],
              hjust = hjust_val, 
              vjust = vjust_pred, 
-             size = 3.5) +
+             size = 5, 
+             fontface = "bold")
     my_theme
   
   # Add y-axis if requested
@@ -761,7 +763,7 @@ plot_dual <- function(xvar, xlab, show_y = FALSE, show_legend = FALSE) {
       legend.justification = c(1, 1),
       legend.direction = "vertical",
       legend.box.background = element_rect(fill = "white", color = "gray80", size = 0.3),
-      legend.margin = margin(3, 3, 3, 3, unit = "pt"),
+      legend.margin = ggplot2::margin(3, 3, 3, 3, unit = "pt"),
       legend.text = element_text(size = 10)
     )
   }
@@ -773,14 +775,91 @@ plot_dual <- function(xvar, xlab, show_y = FALSE, show_legend = FALSE) {
 # Create & Combine Plots
 #----------------------------
 
-p1 <- plot_dual("VPD_site", "VPD (kPa)", show_y = TRUE, show_legend = TRUE)
-p2 <- plot_dual("rH_site", "Relative Humidity (%)")
-p3 <- plot_dual("nir", "NIR")
-p4 <- plot_dual("MLSWI26", "MLSWI26")
-p5 <- plot_dual("GDVI", "GDVI", show_y = TRUE)
-p6 <- plot_dual("Tair_site", "Air Temperature (°C)")
-p7 <- plot_dual("Es", "Es")
-p8 <- plot_dual("cumulative_gdd", "Cumulative GDD (°C)")
+class(rf_data$VPD_site)
+class(rf_data$rH_site)
+class(rf_data$Tair_site)
+class(rf_data$LUE_predicted)
+rf_data$LUEpredicted <- rf_data$LUE_predicted
+
+p1 <- plot_dual("VPD_site", "VPD (kPa)", show_y = TRUE, show_legend = TRUE) +
+  theme_classic() +   # classic clean theme
+  theme(
+    legend.position = c(0.98, 0.98),         # keep legend in top-right corner
+    legend.justification = c(1, 1),
+    legend.direction = "vertical",
+    legend.box.background = element_rect(fill = "white", color = "gray80", size = 0.3),
+    legend.margin = ggplot2::margin(3, 3, 3, 3, unit = "pt"),
+    legend.text = element_text(size = 10),
+    
+    axis.line = element_line(size = 1.5, color = "black"),   # thick black axes
+    axis.ticks = element_line(size = 1),                     # thicker ticks
+    axis.text = element_text(size = 14, color = "black"),    # tick labels
+    axis.title = element_text(size = 16)      # bold axis titles
+  )
+p2 <- plot_dual("rH_site", "Relative Humidity (%)")  +theme_classic() +  
+  labs(y = NULL) +    # remove y-axis title # classic theme
+  theme(
+    legend.position = "none",          # remove legend
+    axis.line = element_line(size = 1.5, color = "black"),   # thick black axes
+    axis.ticks = element_line(size = 1),                     # thicker ticks
+    axis.text = element_text(size = 14, color = "black"),    # axis labels
+    axis.title = element_text(size = 16)      # axis titles bold
+  )
+p3 <- plot_dual("DBSI", "DBSI") + theme_classic() +
+  labs(y = NULL) +    # remove y-axis title# classic theme
+  theme(
+    legend.position = "none",          # remove legend
+    axis.line = element_line(size = 1.5, color = "black"),   # thick black axes
+    axis.ticks = element_line(size = 1),                     # thicker ticks
+    axis.text = element_text(size = 14, color = "black"),    # axis labels
+    axis.title = element_text(size = 16)      # axis titles bold
+  )
+p4 <- plot_dual("AWEInsh", "AWEInsh")+  theme_classic() +  
+  labs(y = NULL) +    # remove y-axis title# classic theme
+  theme(
+    legend.position = "none",          # remove legend
+    axis.line = element_line(size = 1.5, color = "black"),   # thick black axes
+    axis.ticks = element_line(size = 1),                     # thicker ticks
+    axis.text = element_text(size = 14, color = "black"),    # axis labels
+    axis.title = element_text(size = 16)      # axis titles bold
+  )
+p5 <- plot_dual("IAVI", "IAVI", show_y = TRUE) + theme_classic() + 
+  theme(
+    legend.position = "none",          # remove legend
+    axis.line = element_line(size = 1.5, color = "black"),   # thick black axes
+    axis.ticks = element_line(size = 1),                     # thicker ticks
+    axis.text = element_text(size = 14, color = "black"),    # axis labels
+    axis.title = element_text(size = 16)      # axis titles bold
+  )
+p6 <- plot_dual("Tair_site", "Air Temperature (°C)")+  
+  theme_classic() +   # classic theme
+  labs(y = NULL) +    # remove y-axis title
+  theme(
+    legend.position = "none",          # remove legend
+    axis.line = element_line(size = 1.5, color = "black"),   # thick black axes
+    axis.ticks = element_line(size = 1),                     # thicker ticks
+    axis.text = element_text(size = 14, color = "black"),    # axis labels
+    axis.title = element_text(size = 16)      # axis titles bold
+  )
+p7 <- plot_dual("Es", "Es") +  theme_classic() + 
+  # classic theme
+  labs(y = NULL) +
+  theme(
+    legend.position = "none",          # remove legend
+    axis.line = element_line(size = 1.5, color = "black"),   # thick black axes
+    axis.ticks = element_line(size = 1),                     # thicker ticks
+    axis.text = element_text(size = 14, color = "black"),    # axis labels
+    axis.title = element_text(size = 16)      # axis titles bold
+  )
+p8 <- plot_dual("cumulative_gdd", "Cumulative GDD (°C)")+  theme_classic() +   # classic theme
+  labs(y = NULL) +
+  theme(
+    legend.position = "none",          # remove legend
+    axis.line = element_line(size = 1.5, color = "black"),   # thick black axes
+    axis.ticks = element_line(size = 1),                     # thicker ticks
+    axis.text = element_text(size = 14, color = "black"),    # axis labels
+    axis.title = element_text(size = 16)      # axis titles bold
+  )
 
 LUEbiophysical <- ((p1 | p2 | p3 | p4) / (p5 | p6 | p7 | p8)) +
   plot_annotation(
@@ -790,6 +869,17 @@ LUEbiophysical <- ((p1 | p2 | p3 | p4) / (p5 | p6 | p7 | p8)) +
     )
   )
 
+LUEbiophysical <- ((p1 | p2 | p3 | p4) / (p5 | p6 | p7 | p8)) +
+  plot_annotation(
+    tag_levels = 'A',
+    tag_prefix = "",
+    theme = theme(
+      plot.tag = element_text(size = 12, face = "bold"),
+      plot.tag.position = c(1, 1)   # top-right corner
+    )
+  )
+
+
 #----------------------------
 # Save the Plot
 #----------------------------
@@ -798,8 +888,8 @@ ggsave(
   filename = "LUEbiophysical.png",
   plot = LUEbiophysical,
   path = "C:/Users/rbmahbub/Documents/RProjects/GapfillingOtherRiceSites/Figure/PaperFigure",
-  width = 12,
-  height = 8,
+  width = 17,
+  height = 10,
   dpi = 300,
   units = "in"
 )
@@ -848,9 +938,9 @@ vi_equations <- c(
 plot_dual_axis_vi_gpp <- function(data, vi_col, gpp_col = "GPP_site", 
                                   color_vi = NULL, color_gpp = NULL,
                                   equation_label = NULL) {
-  palette_colors <- wesanderson::wes_palette("GrandBudapest2")
+  palette_colors <- wesanderson::wes_palette("Cavalcanti1")
   if (is.null(color_vi)) color_vi <- palette_colors[1]
-  if (is.null(color_gpp)) color_gpp <- palette_colors[4]
+  if (is.null(color_gpp)) color_gpp <- palette_colors[2]
   
   cor_val <- cor(data[[vi_col]], data[[gpp_col]], use = "complete.obs")
   r_squared <- round(cor_val^2, 2)
@@ -977,7 +1067,195 @@ ggsave(
   dpi = 300,
   units = "in"
 )
+# ==============================================================================
+# 3. GPP VI GRAPHS (MODIFIED: Equation in Title)
+# ==============================================================================
+# print(top_20_lowest_train_mae)
+# List of vegetation indices
+vi_list <- c("IAVI", "VARI", "NDVI", "TSAVI", "RNDVI", "kNDVI", "EVI","ATSAVI")
 
+# Assuming 'joined_df' exists and packages are loaded (e.g., library(ggplot2), 
+# library(dplyr), library(gridExtra), library(wesanderson), library(stringr))
+
+# Ensure numeric (as in your original code)
+# joined_df <- joined_df %>%
+#    dplyr::filter(!str_detect(siteyear, "2015$|2016$|2017$"))
+joined_df[vi_list] <- lapply(joined_df[vi_list], as.numeric)
+joined_df$GPP_site <- as.numeric(joined_df$GPP_site)
+
+# GPP range
+gpp_min <- min(joined_df$GPP_site, na.rm = TRUE)
+gpp_max <- max(joined_df$GPP_site, na.rm = TRUE)
+
+# Scale function
+scale_to_gpp_range <- function(x, vi_min, vi_max, gpp_min, gpp_max) {
+  (x - vi_min) / (vi_max - vi_min) * (gpp_max - gpp_min) + gpp_min
+}
+
+# Scale VIs (as in original code, though the plot function does dynamic scaling too)
+for (vi in vi_list) {
+  vi_min <- min(joined_df[[vi]], na.rm = TRUE)
+  vi_max <- max(joined_df[[vi]], na.rm = TRUE)
+  joined_df[[paste0(vi, "_scaled")]] <- scale_to_gpp_range(joined_df[[vi]], vi_min, vi_max, gpp_min, gpp_max)
+}
+
+# Equation annotations for each VI - These strings will now be used in the title
+vi_equations <- c(
+  IAVI   = "IAVI == frac(NIR - (Red - gamma %.% (Blue - Red)), NIR + (Red - gamma %.% (Blue - Red)))",
+  VARI   = "VARI == frac(Green - Red, Green + Red - Blue)",
+  NDVI   = "NDVI == frac(NIR - Red, NIR + Red)",
+  TSAVI  = "TSAVI == frac(sla %.% (NIR - sla %.% Red - slb), sla %.% NIR + Red - sla %.% slb)",
+  RNDVI  = "RNDVI == frac(Red - NIR, Red + NIR)",
+  kNDVI  = "kNDVI == frac(kNN - kNR, kNN + kNR)",
+  EVI    = "EVI == g %.% frac(NIR - Red, NIR + C[1] %.% R - C[2] %.% B + L)",
+  ATSAVI = "ATSAVI == frac(1 - NIR - SWIR[1], 1 - NIR + SWIR[1])"
+)
+
+# Plot function - MODIFIED to place equation in the title and use string parsing
+plot_dual_axis_vi_gpp <- function(data, vi_col, gpp_col = "GPP_site", 
+                                  color_vi = NULL, color_gpp = NULL) { 
+  # Note: equation_label parameter removed. Accessing vi_equations globally.
+  
+  palette_colors <- wesanderson::wes_palette("Cavalcanti1")
+  if (is.null(color_vi)) color_vi <- palette_colors[1]
+  if (is.null(color_gpp)) color_gpp <- palette_colors[2]
+  
+  cor_val <- cor(data[[vi_col]], data[[gpp_col]], use = "complete.obs")
+  r_squared <- round(cor_val^2, 2)
+  
+  vi_range <- range(data[[vi_col]], na.rm = TRUE)
+  gpp_range <- range(data[[gpp_col]], na.rm = TRUE)
+  
+  # Handle cases where vi_range is collapsed
+  if (!is.finite(diff(vi_range)) || diff(vi_range) == 0) {
+    warning(paste("VI range is non-finite or zero for", vi_col, ". Cannot scale and plot."))
+    return(ggplot() + labs(title = paste("Cannot plot for", vi_col, ": VI data invalid.")))
+  }
+  
+  scale_factor <- diff(gpp_range) / diff(vi_range)
+  shift_factor <- gpp_range[1] - vi_range[1] * scale_factor
+  vi_to_gpp <- function(x) { x * scale_factor + shift_factor }
+  gpp_to_vi <- function(x) { (x - shift_factor) / scale_factor }
+  
+  vi_breaks <- pretty(vi_range, n = 5)
+  vi_breaks <- vi_breaks[vi_breaks >= vi_range[1] & vi_breaks <= vi_range[2]] # Filter to actual range
+  
+  # --- START MODIFICATION FOR TITLE ---
+  # 1. Get the full equation string
+  full_equation <- vi_equations[[vi_col]]
+  
+  # 2. Extract only the formula part (the right side of '==')
+  # This prevents redundancy (e.g., IAVI (R^2) IAVI == ...), but keeps the plotmath
+  # expressions like C[1] intact.
+  formula_only <- gsub(paste0("^", vi_col, "\\s*==\\s*"), "", full_equation)
+  
+  # 3. Create the combined title string for plotmath parsing: VI Name (R^2 = value) (Formula)
+  # FIX: Replaced outer square brackets '[' and ']' with parentheses '(' and ')'
+  # to avoid plotmath parsing conflicts.
+  title_string <- paste0(
+    vi_col, 
+    "~~(", "italic(R)^2", "==", r_squared, ")~(", 
+    formula_only, 
+    ")"
+  )
+  # --- END MODIFICATION FOR TITLE ---
+  
+  p <- ggplot(data, aes(x = DAP)) +
+    geom_point(aes(y = !!sym(gpp_col)), color = color_gpp, size = 1.2, alpha = 0.7) +
+    geom_point(aes(y = vi_to_gpp(!!sym(vi_col))), color = color_vi, size = 1.2, alpha = 0.7) +
+    scale_y_continuous(
+      name = "GPP (gC m⁻² day⁻¹)",
+      limits = gpp_range,
+      sec.axis = sec_axis(
+        trans = gpp_to_vi,
+        name = "Vegetation Index", # Removed "scaled to 0-1" as it's implied by the axis logic
+        breaks = vi_breaks
+      )
+    ) +
+    labs(
+      # FIX: Use parse(text = title_string) to force plotmath interpretation
+      title = parse(text = title_string), 
+      x = "Days after Planting"
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(
+      # Explicitly calling ggplot2::margin to avoid potential conflicts
+      axis.title.y.left = element_text(color = color_gpp, face = "bold", margin = ggplot2::margin(r = 10, unit = "pt")),
+      axis.text.y.left = element_text(color = color_gpp),
+      axis.title.y.right = element_text(color = color_vi, face = "bold", margin = ggplot2::margin(l = 10, unit = "pt")),
+      axis.text.y.right = element_text(color = color_vi),
+      # Reduced size for the title so the equation fits in the grid panel
+      plot.title = element_text(
+        hjust = 0.5, 
+        size = 12, 
+        face = "bold"
+        # FIX: Removed the invalid 'parse = TRUE' argument from element_text()
+      ) 
+    )
+  
+  # REMOVED: The old annotation block since the equation is now in the title
+  
+  return(p)
+}
+
+# Generate plot list
+# The lapply call is simplified as it no longer needs to pass equation_label
+plot_list <- lapply(vi_list, function(vi) {
+  plot_dual_axis_vi_gpp(joined_df, vi)
+})
+
+# Filter out any NULL plots if a VI had a collapsed or invalid range
+plot_list <- plot_list[!sapply(plot_list, is.null)]
+
+
+# Clean axes for grid layout
+# Only proceed if plot_list is not empty
+if (length(plot_list) > 0) {
+  for (i in seq_along(plot_list)) {
+    if (i %in% 1:4) {
+      plot_list[[i]] <- plot_list[[i]] + theme(axis.title.x = element_blank())
+    }
+    if (!i %in% c(1, 5)) {
+      plot_list[[i]] <- plot_list[[i]] + theme(
+        axis.title.y.left = element_blank(),
+        axis.text.y.left = element_blank(),
+        axis.ticks.y.left = element_blank()
+      )
+    }
+    if (!i %in% c(4, 8)) {
+      plot_list[[i]] <- plot_list[[i]] + theme(
+        axis.title.y.right = element_blank(),
+        axis.text.y.right = element_blank(),
+        axis.ticks.y.right = element_blank()
+      )
+    }
+  }
+}
+
+
+# Final combined grid layout
+# Check if plot_list is not empty before arranging
+if (length(plot_list) > 0) {
+  final_plot <- grid.arrange(
+    grobs = plot_list,
+    ncol = 4
+  )
+  print(final_plot) # Display the final plot
+} else {
+  message("No plots were generated. Check your data and VI ranges.")
+}
+
+final_plot
+# Save the plot
+ggsave(
+  filename = "GPPVI_dual_axis_title_eq.png",
+  plot = final_plot,
+  path = "C:/Users/rbmahbub/Documents/RProjects/GapfillingOtherRiceSites/Figure/PaperFigure",
+  width = 18,
+  height = 9,
+  dpi = 200,
+  units = "in"
+)
 
 #===================================================
 #LAI
@@ -985,6 +1263,8 @@ ggsave(
 #### ============================ ####
 #### 1. Ground LAI from Excel File ####
 #### ============================ ####
+dev.off()
+graphics.off()
 # File path for ground LAI data
 file_path <- "C:/Users/rbmahbub/Documents/RProjects/GapfillingOtherRiceSites/Data/SiteLAICHdata/Wy3Wy4LAI2015_2017.xlsx"
 # Output path for ground LAI plot
@@ -997,10 +1277,10 @@ lai_data_list <- lapply(sheet_years, function(year) {
   read_excel(file_path, sheet = year)
 })
 names(lai_data_list) <- sheet_years
-
 plot_lai_year <- function(df, year, show_x_axis = TRUE) {
   df_long <- df %>%
-    pivot_longer(cols = c("Way 3", "Way 4"), names_to = "Site", values_to = "LAI")
+    pivot_longer(cols = c("Way 3", "Way 4"), names_to = "Site", values_to = "LAI") %>%
+    mutate(Site = recode(Site, "Way 3" = "US-HRC", "Way 4" = "US-HRA"))
   
   start_datetime <- as.POSIXct(paste0(year, "-04-01 00:00:00"), tz = "UTC")
   end_datetime <- as.POSIXct(paste0(year, "-09-30 23:59:59"), tz = "UTC")
@@ -1010,13 +1290,13 @@ plot_lai_year <- function(df, year, show_x_axis = TRUE) {
     scale_x_datetime(
       limits = c(start_datetime, end_datetime),
       date_labels = "%b",
-      date_breaks = "1 month"
+      date_breaks = "1 month",
+      name = "Time"  # ensures x-axis title
     ) +
     scale_y_continuous(limits = c(0, 6), breaks = 0:6) +
-    scale_color_manual(values = c("Way 3" = "blue", "Way 4" = "green")) +
+    scale_color_manual(values = c("US-HRC" = "blue", "US-HRA" = "purple")) +
     labs(
       title = paste("Ground-collected LAI over Time for", year),
-      x = "Date",
       y = expression("LAI (m"^2~"m"^-2*")"),
       color = "Site"
     ) +
@@ -1031,15 +1311,93 @@ plot_lai_year <- function(df, year, show_x_axis = TRUE) {
       legend.text = element_text(size = 12)
     )
 }
+plot_lai_year <- function(df, year, show_x_axis = TRUE) {
+  # Data preparation: pivot and clean up site names/dates
+  df_long <- df %>%
+    pivot_longer(cols = c("Way 3", "Way 4"), names_to = "Site", values_to = "LAI") %>%
+    mutate(
+      Site = recode(Site, "Way 3" = "US-HRC", "Way 4" = "US-HRA"),
+      # Ensure Date is POSIXct for scale_x_datetime
+      Time = as.POSIXct(Date, tz = "UTC")
+    )
+  
+  # Define the plotting period (April 1st to September 30th)
+  start_datetime <- as.POSIXct(paste0(year, "-04-01 00:00:00"), tz = "UTC")
+  end_datetime <- as.POSIXct(paste0(year, "-09-30 23:59:59"), tz = "UTC")
+  
+  ggplot(df_long, aes(x = Time, y = LAI, color = Site)) +
+    geom_line(size = 1) +
+    scale_x_datetime(
+      limits = c(start_datetime, end_datetime),
+      date_labels = "%b", # Display month abbreviations
+      date_breaks = "1 month"
+    ) +
+    scale_y_continuous(limits = c(0, 6), breaks = 0:6) +
+    scale_color_manual(values = c("US-HRC" = "blue", "US-HRA" = "purple")) +
+    labs(
+      title = paste("Ground-collected LAI over Time for", year),
+      # **CORRECTION HERE: The label is now unconditionally set to "Time"**
+      x = "Time",
+      y = expression("LAI (m"^2~"m"^-2*")"),
+      color = "Site"
+    ) +
+    theme_minimal() +
+    theme(
+      # The visibility of the label is now solely controlled by the size here:
+      axis.text.x = element_text(color = "black", size = ifelse(show_x_axis, 12, 0)),
+      axis.title.x = element_text(color = "black", size = ifelse(show_x_axis, 14, 0)),
+      axis.text.y = element_text(color = "black", size = 12),
+      axis.title.y = element_text(color = "black", size = 14),
+      plot.title = element_text(size = 16, face = "bold"),
+      legend.title = element_text(size = 20),
+      legend.text = element_text(size = 20)
+    )
+}
+
 
 # Generate plots with shared x-axis only at the bottom
-plot_2015 <- plot_lai_year(lai_data_list[["2015"]], "2015", show_x_axis = FALSE)
-plot_2016 <- plot_lai_year(lai_data_list[["2016"]], "2016", show_x_axis = FALSE)
-plot_2017 <- plot_lai_year(lai_data_list[["2017"]], "2017", show_x_axis = TRUE)
+# Extract legend from one plot
+shared_legend <- get_legend(plot_2017)  # Use the plot that has x-axis shown
 
-# Combine and save
-combined_ground_plot <- grid.arrange(plot_2015, plot_2016, plot_2017, ncol = 1)
-ggsave(output_path_ground, combined_ground_plot, width = 8, height = 12, dpi = 300)
+# Remove legends from all plots
+plot_2015_nolegend <- plot_2015 + theme(legend.position = "none")
+plot_2016_nolegend <- plot_2016 + theme(legend.position = "none")
+plot_2017_nolegend <- plot_2017 + theme(legend.position = "none")
+
+# Extract legend from one plot
+shared_legend <- get_legend(
+  plot_2017 + theme(
+    legend.position = "right",
+    legend.title = element_text(size = 20),
+    legend.text = element_text(size = 20)
+  )
+)
+
+# Combine plots vertically
+combined_plots <- plot_grid(
+  plot_2015_nolegend,
+  plot_2016_nolegend,
+  plot_2017_nolegend,
+  ncol = 1,
+  align = 'v'
+)
+
+# Add shared legend to the right
+final_plot <- plot_grid(
+  combined_plots, shared_legend,
+  ncol = 2,
+  rel_widths = c(3, 0.4)  # adjust width ratio for legend
+)
+
+# Save figure
+ggsave(
+  filename = "combined_ground_plot.png",
+  plot = final_plot,
+  path = "C:/Users/rbmahbub/Documents/RProjects/GapfillingOtherRiceSites/Figure/PaperFigure",
+  width = 12,
+  height = 10,
+  dpi = 300
+)
 
 #### ===================================== ####
 #### 2. Ungapfilled Satellite LAI (2015–2018) ####
@@ -1066,7 +1424,7 @@ create_combined_lai_plot <- function(df_ungap, df_gap, site_name) {
     scale_x_datetime(date_labels = "%b", breaks = "1 month") +
     labs(
       title = paste("Site:", site_name),
-      x = "Time",
+      x = "Date",
       y = expression("LAI (m"^2~"m"^-2*")")
     ) +
     theme_minimal(base_family = "sans") +
@@ -1097,7 +1455,7 @@ combined_plot <- wrap_plots(plotlist = plot_list_combined, ncol = 4)
 
 # Save the final figure
 ggsave(
-  filename = "C:/Users/rbmahbub/Documents/RProjects/GapfillingOtherRiceSites/Figure/LAI_data/LAI_combined_16sites_overlayed_gap_ungap.png",
+  filename = "C:/Users/rbmahbub/Documents/RProjects/GapfillingOtherRiceSites/Figure/PaperFigure/LAI_combined_16sites_overlayed_gap_ungap.png",
   plot = combined_plot,
   width = 16, height = 12, dpi = 300
 )
@@ -1142,6 +1500,7 @@ plot_list_gap <- lapply(1:16, function(i) {
 combined_gap_plot <- wrap_plots(plotlist = plot_list_gap, ncol = 4)
 output_path_gap <- "C:/Users/rbmahbub/Documents/RProjects/GapfillingOtherRiceSites/Figure/LAI_data/LAI_16sites_gridgapfilled.png"
 ggsave(filename = output_path_gap, plot = combined_gap_plot, width = 16, height = 12, dpi = 300)
+combined_gap_plot
 
 
 # Planting DOY values
@@ -1174,58 +1533,100 @@ meteo_df_2015_2018ni <- lapply(names(meteo_df_2015_2018ni), function(site_name) 
 names(meteo_df_2015_2018ni) <- names(DOP_values)
 meteo_df_2015_2018ni
 
+library(ggplot2)
+library(patchwork)
+library(gtable)
 
+# Function for one site without legend
+create_combined_lai_plot3_nolegend <- function(df_ungap, df_gap, df_corr, site_name) {
+  df_ungap <- df_ungap[format(df_ungap$Date, "%m") >= "04" & format(df_ungap$Date, "%m") <= "09", c("Date", "Lai")]
+  df_gap   <- df_gap[format(df_gap$Date, "%m") >= "04" & format(df_gap$Date, "%m") <= "09", c("Date", "Lai")]
+  df_corr  <- df_corr[format(df_corr$Date, "%m") >= "04" & format(df_corr$Date, "%m") <= "09", c("Date", "Lai")]
+  
+  df_ungap$Source <- "Ungapfilled"
+  df_gap$Source   <- "Gapfilled"
+  df_corr$Source  <- "Gapfilled+Corrected"
+  
+  df_all <- rbind(df_ungap, df_gap, df_corr)
+  
+  ggplot(df_all, aes(x = Date, y = Lai, color = Source, shape = Source, size = Source)) +
+    geom_point(alpha = 0.8) +
+    scale_color_manual(values = c("Ungapfilled" = "darkgreen",
+                                  "Gapfilled" = "orange",
+                                  "Gapfilled+Corrected" = "blue")) +
+    scale_shape_manual(values = c("Ungapfilled" = 17, "Gapfilled" = 16, "Gapfilled+Corrected" = 15)) +
+    scale_size_manual(values = c("Ungapfilled" = 2.5, "Gapfilled" = 1.5, "Gapfilled+Corrected" = 2)) +
+    scale_x_datetime(date_labels = "%b", breaks = "1 month") +
+    labs(title = paste("Site:", site_name),
+         x = "Date", y = expression("LAI (m"^2~"m"^-2*")")) +
+    theme_minimal(base_family = "sans") +
+    theme(
+      plot.title = element_text(size = 14, face = "bold"),
+      axis.title.x = element_text(size = 12),
+      axis.title.y = element_text(size = 12),
+      axis.text = element_text(size = 10),
+      legend.position = "none"
+    )
+}
+
+# Create all 16 plots without legends
+plot_list_combined3 <- lapply(1:16, function(i) {
+  create_combined_lai_plot3_nolegend(
+    meteo_df_2015_2018ni[[i]],
+    meteo_df_2015_2018nisg[[i]],
+    meteo_df_2015_2018[[i]],
+    site_names[i]
+  )
+})
+
+# Dummy plot to create legend
+dummy_df <- rbind(
+  data.frame(Date = Sys.Date(), Lai = 1, Source = "Ungapfilled"),
+  data.frame(Date = Sys.Date(), Lai = 1, Source = "Gapfilled"),
+  data.frame(Date = Sys.Date(), Lai = 1, Source = "Gapfilled+Corrected")
+)
+
+legend_plot <- ggplot(dummy_df, aes(x = Date, y = Lai, color = Source, shape = Source, size = Source)) +
+  geom_point() +
+  scale_color_manual(values = c("Ungapfilled" = "darkgreen",
+                                "Gapfilled" = "orange",
+                                "Gapfilled+Corrected" = "blue")) +
+  scale_shape_manual(values = c("Ungapfilled" = 17, "Gapfilled" = 16, "Gapfilled+Corrected" = 15)) +
+  scale_size_manual(values = c("Ungapfilled" = 2.5, "Gapfilled" = 1.5, "Gapfilled+Corrected" = 2)) +
+  guides(
+    color = guide_legend(override.aes = list(size = 12)),   # increase symbol size in legend
+    shape = guide_legend(override.aes = list(size = 12)),
+    size = "none"
+  ) +
+  theme_void() +
+  theme(
+    legend.position = "bottom",
+    legend.text = element_text(size = 13)  # legend text size
+  )
+
+# Extract legend
+get_legend <- function(mygg) {
+  tmp <- ggplotGrob(mygg)
+  leg <- gtable::gtable_filter(tmp, "guide-box", trim=TRUE)
+  return(leg)
+}
+shared_legend <- get_legend(legend_plot)
+
+# Combine 16 plots + shared legend
+combined_plot3 <- wrap_plots(plotlist = plot_list_combined3, ncol = 4) /
+  shared_legend + plot_layout(heights = c(10, 1))
+
+# Save figure
+ggsave(
+  filename = "C:/Users/rbmahbub/Documents/RProjects/GapfillingOtherRiceSites/Figure/PaperFigure/LAI_16sites_onelegend_big.png",
+  plot = combined_plot3,
+  width = 16, height = 12, dpi = 300
+)
 
 # ==============================================================================
 # 6. PLOT VARIABLE IMPORTANCE ==================================================
 # ==============================================================================
 # This can be derived from the 78 runs
-importance_plot <- ggplot(combined_df, aes(x = `%IncMSE`, y = Variable, fill = Seed)) +
-  geom_bar(stat = "identity", position = position_dodge()) +
-  labs(
-    x = "% Increase in MSE",
-    y = NULL,
-    title = "Variable Importance across Seeds 100–400"
-  ) +
-  theme_minimal(base_size = 14) +
-  scale_fill_manual(values = wes_palette("Cavalcanti1", n = 4)) +
-  theme(legend.position = "bottom")
-
-# Save the plot
-ggsave(
-  filename = "C:/Users/rbmahbub/Documents/RProjects/GapfillingOtherRiceSites/Figure/PaperFigure/best predictor seed.png",
-  plot = importance_plot,
-  width = 10,
-  height = 8,
-  dpi = 300
-)
-
-gini_plot <- ggplot(gini_combined, aes(x = MeanDecreaseGini, y = Variable, fill = Seed)) +
-  geom_bar(stat = "identity", position = position_dodge()) +
-  labs(
-    x = "Mean Decrease in Gini (Node Impurity)",
-    y = NULL,
-    title = "Variable Importance (Node Impurity) across Seeds 100–400"
-  ) +
-  theme_minimal(base_size = 14) +
-  scale_fill_manual(values = wes_palette("Cavalcanti1", n = 4)) +
-  theme(legend.position = "bottom")
-
-# Save the plot
-ggsave(
-  filename = "C:/Users/rbmahbub/Documents/RProjects/GapfillingOtherRiceSites/Figure/PaperFigure/best predictor seed node impurity.png",
-  plot = gini_plot,
-  width = 10,
-  height = 8,
-  dpi = 300
-)
-
-
-
-library(ggplot2)
-library(dplyr)
-library(tidyr)
-
 # Start from your mean_importance table
 importance_combined <- mean_importance %>%
   rename(
@@ -1792,7 +2193,7 @@ metrics_plot_labels <- metrics_data %>%
     ),
     model = factor(model, levels = model_identifiers)
   ) %>%
-  filter(!is.na(model)) %>% 
+  dplyr::filter(!is.na(model)) %>% 
   dplyr::arrange(siteyear, model) %>%
   dplyr::group_by(siteyear) %>%
   dplyr::mutate(
@@ -2453,4 +2854,474 @@ ggsave(
 
 plot(rf_long_filtered$Mean_VPD, rf_long_filtered$GPP_value)
 plot(rf_long_filtered$DOP, rf_long_filtered$GPP_value)
+
+#-----------------------------------------------------------------
+#FAPAR
+#----------------------------------------------------------------
+library(ggplot2)
+library(cowplot)
+
+# --- Define fapar_hist_plot function ---
+fapar_hist_plot <- function(data, fapar_var, lue_var, label, xlab_text, 
+                            show_x = TRUE, show_x_title_only = FALSE, show_legend = TRUE) {
+  # Classify into 3 groups
+  data$Group <- with(data, ifelse(data[[fapar_var]] > 1, 
+                                  "fAPAR > 1",
+                                  ifelse(data[[lue_var]] > 1, 
+                                         "LUE > 1", 
+                                         "Other")))
+  data$Group <- factor(data$Group, levels = c("Other", "LUE > 1", "fAPAR > 1"))
+  
+  # Base plot
+  p <- ggplot(data, aes(x = .data[[fapar_var]], fill = Group)) +
+    geom_histogram(position = "identity", alpha = 0.7, bins = 40) +
+    scale_fill_manual(
+      name = "Group",
+      values = friendly_pal("contrast_three"),  # Replace with your color palette
+      breaks = c("fAPAR > 1", "LUE > 1", "Other"),
+      guide = guide_legend(override.aes = list(size = 10))  # Increased from 5 to 10
+    ) +
+    labs(x = xlab_text, y = "Frequency") +
+    theme_minimal() +
+    theme(
+      text = element_text(size = 16),  # Increased base text size by ~3
+      axis.title = element_text(size = 18),
+      axis.text = element_text(size = 16),
+      legend.title = element_text(size = 20),  # Increased legend title size
+      legend.text = element_text(size = 18)    # Increased legend text size
+    )
+  
+  # Add label top-left
+  y_max <- max(table(cut(data[[fapar_var]], breaks = 40)))
+  p <- p + annotate(
+    "text",
+    x = min(data[[fapar_var]], na.rm = TRUE),
+    y = y_max * 0.95,
+    label = label, hjust = 0, vjust = 1, size = 9, fontface = "bold"  # Increased from 6 to 9
+  )
+  
+  # Conditional x-axis customization
+  if (!show_x) {
+    p <- p + theme(axis.title.x = element_blank(),
+                   axis.text.x  = element_blank(),
+                   axis.ticks.x = element_blank())
+  }
+  if (show_x_title_only) {
+    p <- p + theme(axis.text.x  = element_blank(),
+                   axis.ticks.x = element_blank())
+  }
+  
+  # Conditional legend
+  if (!show_legend) {
+    p <- p + theme(legend.position = "none")
+  } else {
+    p <- p + theme(legend.position = "right")  # Move legend to right side
+  }
+  
+  return(p)
+}
+
+# --- Create the plots ---
+p1 <- fapar_hist_plot(
+  rf_data, "fAPAR_evi", "LUE_evi", "A",
+  xlab_text = expression(italic(f)*"APAR(EVI)"), show_x = TRUE, show_legend = TRUE
+)
+p2 <- fapar_hist_plot(
+  rf_data, "fAPAR_ndvi", "LUE_ndvi", "B",
+  xlab_text = expression(italic(f)*"APAR(NDVI)"), show_x_title_only = TRUE, show_legend = FALSE
+)
+p3 <- fapar_hist_plot(
+  rf_data, "fAPAR_lai", "LUE_lai", "C",
+  xlab_text = expression(italic(f)*"APAR(LAI)"), show_x = TRUE, show_legend = FALSE
+)
+
+# --- Extract shared legend from p1 with increased size ---
+shared_legend <- get_legend(
+  p1 + theme(
+    legend.position = "right",
+    legend.title = element_text(size = 22),  # Further increased size
+    legend.text = element_text(size = 20),   # Further increased size
+    legend.key.size = unit(1.5, "cm")       # Increased legend key size
+  )
+)
+
+# --- Remove legends from plots for combining ---
+p1_nolegend <- p1 + theme(legend.position = "none")
+
+# --- Combine plots vertically with legend on the right ---
+combined_plots <- plot_grid(
+  p1_nolegend, p2, p3,
+  ncol = 1,
+  align = "v"
+)
+
+# --- Combine plots with legend on the right side ---
+final_plot <- plot_grid(
+  combined_plots,
+  shared_legend,
+  ncol = 2,
+  rel_widths = c(3, 0.8)  # Adjust width ratio between plot and legend
+)
+
+final_plot
+
+# --- Save figure with increased dimensions to accommodate larger text ---
+ggsave(
+  filename = "combined_fapar_plot.png",
+  plot = final_plot,
+  path = "C:/Users/rbmahbub/Documents/RProjects/GapfillingOtherRiceSites/Figure/PaperFigure",
+  width = 14,  # Increased width to accommodate legend on the right
+  height = 12,
+  dpi = 300
+)
+
+library(ggplot2)
+library(dplyr)
+
+# ------------------------------------------------------------------------------
+# Prepare metrics labels for each facet
+# ------------------------------------------------------------------------------
+
+metrics_plot_labels_block <- metrics_plot_labels %>%  ###change here with case when siteyear for new graph
+  distinct(siteyear, model, R2, MAE, Bias) %>%
+  mutate(
+    xpos = case_when(
+      model == "GPP_predicted" ~ 0,
+      model == "GPPpredictedVPM_EVI" ~ 1775,
+      model == "GPP_predicted_VI" ~ 900,
+      TRUE ~ NA_real_
+    ),
+    ypos =  case_when(
+      model == "GPP_predicted" ~ 43,
+      model == "GPPpredictedVPM_EVI" ~ 43,
+      model == "GPP_predicted_VI" ~ 7,
+      TRUE ~ NA_real_
+    ),
+    label = paste0("R² = ", round(R2, 2),
+                   "\nMAE = ", round(MAE, 2),
+                   "\nBias = ", round(Bias, 2)),
+    siteyear_formatted = paste0(siteyear)
+  ) %>%
+  group_by(siteyear_formatted, model) %>%
+  slice(1) %>%   # only 1 label per facet × model
+  ungroup()
+
+# ------------------------------------------------------------------------------
+# Prepare main plot data
+# ------------------------------------------------------------------------------
+plot_data_long <- plot_data_for_main_geoms %>%
+  dplyr::filter(variable %in% c("GPP_predicted", "GPPpredictedVPM_EVI", "GPP_predicted_VI", "GPP_site")) %>%
+  mutate(
+    model = variable,
+    siteyear_formatted = paste0(siteyear)
+  )
+
+# ------------------------------------------------------------------------------
+# Plot
+# ------------------------------------------------------------------------------
+p <- ggplot(plot_data_long, aes(x = cumulative_gdd, y = value, color = model)) +
+  
+  # Points: use constant size/shape/alpha to avoid extra legends
+  geom_point(data = plot_data_long %>% dplyr::filter(model == "GPP_predicted"),
+             size = 1, shape = 16, alpha = 1) +
+  geom_point(data = plot_data_long %>% dplyr::filter(model %in% c("GPP_site", "GPPpredictedVPM_EVI", "GPP_predicted_VI")),
+             size = 1.5, shape = 16) +
+  
+  # Facets
+  facet_wrap(~ siteyear_formatted, scales = "fixed", ncol = 4) +
+  
+  # Metrics labels
+  geom_text(
+    data = metrics_plot_labels_block,
+    aes(x = xpos, y = ypos, label = label, color = model),
+    inherit.aes = FALSE,
+    hjust = 0, vjust = 1,
+    size = 4, fontface = "bold", lineheight = 0.7,
+    show.legend = FALSE
+  ) +
+  
+  # Color scale and legend
+  # Color scale and legend
+  scale_color_manual(
+    values = variable_colors,
+    name = "Model",
+    labels = c(
+      "GPP_site" = expression(GPP[EC]),
+      "GPPpredictedVPM_EVI" = expression(GPP[VPM]),
+      "GPP_predicted_VI" = expression(GPP[VI]),
+      "GPP_predicted" = expression(GPP[LUERF])
+    )
+  ) +
+  
+  # Legend appearance
+  guides(color = guide_legend(override.aes = list(
+    shape = c(16, 16, 16, 16),
+    size = 5,
+    alpha = c(1, 1, 1, 1)
+  ))) +
+  
+  # Axes
+  scale_x_continuous(limits = c(min_cumulative_gdd_limit, plot_actual_max_cumulative_gdd)) +
+  scale_y_continuous(name = expression(GPP~(gC~m^{-2}~day^{-1}))) +
+  
+  # Labels
+  labs(x = "Cumulative Growing Degree Days (°C)") +
+  
+  # Theme
+  theme_minimal(base_size = 18) +
+  theme(
+    strip.text = element_text(size = 18, face = "bold", margin = ggplot2::margin(t = 5, b = 5)),
+    axis.title = element_text(size = 18, face = "bold"),
+    axis.text = element_text(size = 18),
+    legend.position = "bottom",
+    legend.text = element_text(size = 18, face = "bold"),
+    legend.title = element_text(size = 18, face = "bold"),
+    legend.spacing.x = grid::unit(0.5, 'cm'),
+    legend.text.align = 0,
+    plot.margin = ggplot2::margin(t = 10, r = 10, b = 10, l = 10)
+  )
+
+# ------------------------------------------------------------------------------
+# Save
+# ------------------------------------------------------------------------------
+p
+ggsave(
+  filename = "GPPmultiple.png",
+  plot = p,
+  path = "C:/Users/rbmahbub/Documents/RProjects/GapfillingOtherRiceSites/Figure/PaperFigure",
+  width = 16,
+  height = 11,
+  dpi = 200
+)
+
+
+
+#-------------------------------------------------
+#Comparison GPP DAYLength 
+#------------------------------------------------
+# Calculate ET
+rf_data <- joined_df %>%
+  mutate(ET = Es )
+
+# Summarize by siteyear
+rf_summary <- joined_df %>%
+  group_by(siteyear) %>%
+  summarise(
+    Mean_VPD = mean(VPD_site, na.rm = TRUE),
+    Total_temperature = sum(Tair_site, na.rm = TRUE),
+    total_GPP_site = sum(GPP_site, na.rm = TRUE),
+    total_dayl_hour = sum(dayl_hour, na.rm = TRUE),
+    total_Es = sum(Es, na.rm = TRUE),
+    DOP = mean(DOP, na.rm = TRUE),
+    Variety = first(Variety)
+  )
+
+# Create ET and temperature levels (optional, not used in plot)
+rf_summary <- rf_summary %>%
+  mutate(
+    ET_level = cut(total_Es,
+                   breaks = quantile(total_Es, probs = c(0, 1/3, 2/3, 1), na.rm = TRUE),
+                   labels = c("Low ET", "Medium ET", "High ET"),
+                   include.lowest = TRUE),
+    Temperature_level = cut(Total_temperature,
+                            breaks = quantile(Total_temperature, probs = c(0, 1/3, 2/3, 1), na.rm = TRUE),
+                            labels = c("Low T", "Medium T", "High T"),
+                            include.lowest = TRUE)
+  )
+
+# Reshape only GPP_site
+rf_long <- rf_summary %>%
+  select(siteyear, total_dayl_hour, DOP, Variety, Mean_VPD, total_GPP_site) %>%
+  rename(GPP_value = total_GPP_site)
+
+
+# DOP category
+rf_long_filtered <- rf_long %>%
+  mutate(
+    DOP_category = case_when(
+      DOP <= quantile(DOP, 1/3, na.rm = TRUE) ~ "Early",
+      DOP <= quantile(DOP, 2/3, na.rm = TRUE) ~ "Mid",
+      TRUE ~ "Late"
+    ),
+    DOP_category = factor(DOP_category, levels = c("Early", "Mid", "Late"))
+  )
+
+# Calculate correlations
+r_dayl <- cor(rf_long_filtered$GPP_value,
+              predict(gam(GPP_value ~ s(total_dayl_hour), data = rf_long_filtered)),
+              use = "complete.obs")
+
+r_vpd <- cor(rf_long_filtered$GPP_value,
+             rf_long_filtered$Mean_VPD,
+             use = "complete.obs")
+
+r_dop <- cor(rf_long_filtered$GPP_value,
+             rf_long_filtered$DOP,
+             use = "complete.obs")
+
+# Create label strings
+label_dayl <- paste0("GPP[EC]~vs.~Daylength~(R==", round(r_dayl, 2), ")")
+label_vpd <- paste0("GPP[EC]~vs.~VPD~(R==", round(r_vpd, 2), ")")
+label_dop <- paste0("GPP[EC]~vs.~DOP~(R==", round(r_dop, 2), ")")
+
+# Final plot
+# Final plot with larger legend symbols
+plot_obj <- ggplot(rf_long_filtered, aes(x = total_dayl_hour, y = GPP_value)) +
+  geom_point(
+    aes(color = Variety, shape = DOP_category, size = Mean_VPD),
+    alpha = 0.9
+  ) +
+  geom_smooth(
+    method = "gam",
+    formula = y ~ s(x),
+    color = "black",
+    se = FALSE,
+    size = 1.1
+  ) +
+  geom_text(
+    aes(x = 1550, y = max(GPP_value, na.rm = TRUE) * 0.95, label = label_dayl),
+    parse = TRUE, hjust = 0, vjust = 1, size = 5, color = "black", inherit.aes = FALSE
+  ) +
+  geom_text(
+    aes(x = 1550, y = max(GPP_value, na.rm = TRUE) * 0.85, label = label_vpd),
+    parse = TRUE, hjust = 0, vjust = 1, size = 5, color = "black", inherit.aes = FALSE
+  ) +
+  geom_text(
+    aes(x = 1550, y = max(GPP_value, na.rm = TRUE) * 0.75, label = label_dop),
+    parse = TRUE, hjust = 0, vjust = 1, size = 5, color = "black", inherit.aes = FALSE
+  ) +
+  scale_shape_manual(
+    values = c("Early" = 16, "Mid" = 17, "Late" = 15),
+    name = "Planting Group"
+  ) +
+  scale_size_continuous(
+    range = c(2, 12),
+    name = "Mean VPD"
+  ) +
+  labs(
+    x = "Cumulative Seasonal Daylength (hours)",
+    y = expression("Cumulative Seasonal GPP (g C"~m^{-2}~"season"^{-1}*")"),
+    color = "Variety"
+  ) +
+  theme_minimal(base_size = 20) +
+  theme(
+    axis.line = element_line(color = "black"),
+    axis.ticks = element_line(color = "black"),
+    panel.grid.major = element_line(color = "gray85"),
+    panel.grid.minor = element_blank(),
+    legend.key.width = unit(2, "lines")
+  ) +
+  # Increase legend symbol sizes
+  guides(
+    color = guide_legend(override.aes = list(size = 6)),    # Variety points
+    shape = guide_legend(override.aes = list(size = 6)),    # Planting Group symbols
+    #size = guide_legend(override.aes = list(size = 6))      # VPD legend
+  )
+
+plot_obj
+
+# Define file path and name
+file_path <- "C:/Users/rbmahbub/Documents/RProjects/GapfillingOtherRiceSites/Figure/PaperFigure/GPP_vs_Daylength.png"
+
+# Save the plot
+ggsave(filename = file_path,
+       plot = plot_obj,
+       width = 12,       # width in inches
+       height = 8,       # height in inches
+       dpi = 300)        # resolution
+
+
+
+#-------------------------------------------------
+#ALL VARIABLES TIMESERIES
+#-------------------------------------------------
+library(ggplot2)
+library(gridExtra)
+
+# Variables (exclude DAP vs DAP)
+vars <- mean_importance$Variable
+vars <- vars[vars != "DAP"]
+
+# Output folder
+out_dir <- "C:/Users/rbmahbub/Documents/RProjects/GapfillingOtherRiceSites/Figure/Features"
+
+# Create folder if it doesn't exist
+if(!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
+
+# List to store individual plots
+plot_list <- list()
+
+# Loop through each variable and create a plot
+for(v in vars){
+  p <- ggplot(rf_data, aes_string(x = "DAP", y = v)) +
+    geom_point(alpha = 0.6) +
+    geom_smooth(method = "loess", se = TRUE, color = "blue") +
+    labs(x = "DAP", y = v, title = paste(v, "vs DAP")) +
+    theme_minimal(base_size = 12)
+  
+  # Save individual plot
+  ggsave(filename = file.path(out_dir, paste0(v, "_vs_DAP.png")),
+         plot = p, width = 6, height = 4)
+  
+  # Store for combined plot
+  plot_list[[v]] <- p
+}
+
+# Arrange all plots in a 5x5 grid (adjust number of rows and columns)
+# gridExtra can handle up to 25 plots nicely
+combined_plot <- gridExtra::grid.arrange(grobs = plot_list, nrow = 5, ncol = 5)
+
+# Save combined plot
+ggsave(filename = file.path(out_dir, "All_Variables_vs_DAP.png"),
+       plot = combined_plot, width = 20, height = 20)
+
+
+#-------------------------------------------------------------
+#OLD CODE
+#--------------------------------------------------------------
+importance_plot <- ggplot(combined_df, aes(x = `%IncMSE`, y = Variable, fill = Seed)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(
+    x = "% Increase in MSE",
+    y = NULL,
+    title = "Variable Importance across Seeds 100–400"
+  ) +
+  theme_minimal(base_size = 14) +
+  scale_fill_manual(values = wes_palette("Cavalcanti1", n = 4)) +
+  theme(legend.position = "bottom")
+
+# Save the plot
+ggsave(
+  filename = "C:/Users/rbmahbub/Documents/RProjects/GapfillingOtherRiceSites/Figure/PaperFigure/best predictor seed.png",
+  plot = importance_plot,
+  width = 10,
+  height = 8,
+  dpi = 300
+)
+
+gini_plot <- ggplot(gini_combined, aes(x = MeanDecreaseGini, y = Variable, fill = Seed)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(
+    x = "Mean Decrease in Gini (Node Impurity)",
+    y = NULL,
+    title = "Variable Importance (Node Impurity) across Seeds 100–400"
+  ) +
+  theme_minimal(base_size = 14) +
+  scale_fill_manual(values = wes_palette("Cavalcanti1", n = 4)) +
+  theme(legend.position = "bottom")
+
+# Save the plot
+ggsave(
+  filename = "C:/Users/rbmahbub/Documents/RProjects/GapfillingOtherRiceSites/Figure/PaperFigure/best predictor seed node impurity.png",
+  plot = gini_plot,
+  width = 10,
+  height = 8,
+  dpi = 300
+)
+
+
+
+library(ggplot2)
+library(dplyr)
+library(tidyr)
 

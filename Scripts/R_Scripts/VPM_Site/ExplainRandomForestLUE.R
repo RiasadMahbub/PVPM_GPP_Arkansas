@@ -254,3 +254,193 @@ importance_table <- cbind(
 )
 print(importance_table)
 
+
+# what are the VIS
+library(jsonlite)
+print(best_features_lue) # Run this PVPM_RFE.R
+best_features_lue_indices
+# This script reads the spectral-indices.js file from a local path, extracts specific indices, and presents their details in a table.
+# Ensure you have the 'jsonlite' package installed. # If not, run: install.packages("jsonlite")
+
+# Define the full path to the spectral-indices.js file. # IMPORTANT: If you move this file, you must update the path below.
+file_path <- "C:/Users/rbmahbub/Documents/RProjects/GapfillingOtherRiceSites/spectral-indices.js"
+# Read the file content as a single string.
+raw_content <- paste(readLines(file_path, warn = FALSE), collapse = "\n")
+# A more robust way to extract the JSON part by removing the surrounding JS code. # The JSON object starts after `var spectralIndices = ` and ends before the `exports` line.
+json_start <- regexpr("var spectralIndices = ", raw_content) + nchar("var spectralIndices = ")
+# Find the position of the last closing curly brace before the exports section. # This is a robust way to find the end of the JSON object.
+json_end_pos <- tail(gregexpr("}", substring(raw_content, 1, regexpr("exports.indices", raw_content)), fixed = TRUE)[[1]], 1)
+# Extract the JSON string, ensuring only the valid JSON is captured.
+json_string <- substring(raw_content, json_start, json_end_pos)
+# Check if the JSON data was successfully extracted.
+if (nchar(trimws(json_string)) < 10) { # Using a more lenient check
+  stop("Failed to extract the JSON data. The file format might be unexpected.")
+}
+# The original file uses single quotes, but JSON requires double quotes.
+# This line replaces all single quotes with double quotes to make the string valid JSON.
+json_string <- gsub("'", '"', json_string)
+# Parse the JSON data into a list.
+indices_list <- fromJSON(json_string, flatten = TRUE)
+# The function processes the nested list and handles the varying lengths correctly.
+process_index_data <- function(indices_list) {
+  # Access the nested 'SpectralIndices' list
+  indices_data <- indices_list$SpectralIndices
+  # Create a data frame to store the processed data
+  df <- data.frame(
+    short_name = character(),
+    application_domain = character(),
+    bands = character(),
+    formula = character(),
+    stringsAsFactors = FALSE
+  )
+  # Iterate over each index in the list
+  for (name in names(indices_data)) {
+    index_entry <- indices_data[[name]]
+    # Handle the 'bands' field separately to convert list to a string
+    bands_str <- paste(index_entry$bands, collapse = ", ")
+    # Create a new row for the data frame
+    new_row <- data.frame(
+      short_name = name,
+      application_domain = index_entry$application_domain,
+      bands = bands_str,
+      formula = index_entry$formula,
+      stringsAsFactors = FALSE
+    )
+    # Append the new row to the data frame
+    df <- rbind(df, new_row)
+  }
+  return(df)
+}
+# Create the master data frame
+indices_df <- process_index_data(indices_list)
+# # Define the list of indices from the 'best_features_lue' variable. # We will manually filter out non-index terms.
+# best_features_lue_indices <- c(
+#   "NDDI", "RI4XS", "MLSWI26", "TGI", "MRBVI", "ExG", "BCC", "NDYI",
+#   "EMBI", "MBWI", "NMDI", "DBSI", "BIXS", "IKAW", "DSWI3", "AWEInsh", "MuWIR"
+# )
+# Filter the data frame to include only the requested indices from best_features_lue.
+results <- indices_df[indices_df$short_name %in% best_features_lue, ]
+# Prepare the formatted table for printing.
+header <- c("Short Name", "Application Domain", "Bands Used", "Formula")
+separator <- c("----------", "------------------", "----------", "-------")
+# Start with the markdown table headers and separators.
+table_rows <- c(
+  paste(header, collapse = " | "),
+  paste(separator, collapse = " | ")
+)
+# Populate the table with the data.
+for (i in 1:nrow(results)) {
+  row_data <- results[i,]
+  table_rows <- c(table_rows, paste(c(row_data$short_name, row_data$application_domain, row_data$bands, row_data$formula), collapse = " | "))
+}
+# Print the final formatted table.
+cat("### Selected Spectral Index Details (from best_features_lue)\n\n")
+cat(paste(table_rows, collapse = "\n"))
+cat("\n\n---\n\n")
+# Find and print a list of Visible-spectrum-based Vegetation Indices # Use a more reliable way to filter for visible bands
+vis_indices <- indices_df[indices_df$application_domain == "vegetation" & grepl("G|R|B|A|Y", indices_df$bands), ]
+# Create a new table for the visible indices
+vis_table_rows <- c(
+  paste(header, collapse = " | "),
+  paste(separator, collapse = " | ")
+)
+for (i in 1:nrow(vis_indices)) {
+  row_data <- vis_indices[i,]
+  vis_table_rows <- c(vis_table_rows, paste(c(row_data$short_name, row_data$application_domain, row_data$bands, row_data$formula), collapse = " | "))
+}
+cat("### Visible-Spectrum-Based Vegetation Indices\n\n")
+cat(paste(vis_table_rows, collapse = "\n"))
+# This script analyzes a pre-defined table of spectral indices to categorize them
+# by application domain and count the usage of each spectral band.
+
+# This script assumes a data frame named `results_df` is already available in your
+# R environment. The structure of this data frame should match the output you provided,
+# with columns named `short_name`, `application_domain`, and `bands`.
+# This script analyzes a pre-defined table of spectral indices to categorize them
+# by application domain and count the usage of each spectral band.
+
+# This script assumes a data frame named `results` is already available in your
+# R environment. The structure of this data frame should match the output you provided,
+# with columns named `short_name`, `application_domain`, and `bands`.
+
+# --- Categorize by Application Domain ---
+cat("### Spectral Indices by Application Domain\n\n")
+domain_counts <- table(results$application_domain)
+for (domain in names(domain_counts)) {
+  indices <- results$short_name[results$application_domain == domain]
+  cat(paste0("* ", toupper(substring(domain, 1, 1)), substring(domain, 2), " (", domain_counts[domain], " indices): ", paste(indices, collapse = ", "), "\n"))
+}
+
+# --- Count Band Usage ---
+cat("\n\n### Band Usage Count\n\n")
+# Create a vector to hold all bands from the data
+all_bands <- unlist(strsplit(results$bands, ", "))
+# Count the frequency of each band
+band_counts <- table(all_bands)
+# Sort the counts in descending order
+sorted_band_counts <- sort(band_counts, decreasing = TRUE)
+# Print the results in a formatted list
+for (band in names(sorted_band_counts)) {
+  cat(paste0("* ", band, ": ", sorted_band_counts[band], " times\n"))
+}
+
+
+joined_df_luebest <- joined_df %>%
+  select(all_of(c("PAR_site", "GPP_site", "LUE", "fAPAR", "Lai", best_features_lue)))
+joined_df_luebest <- joined_df_luebest[, !(names(joined_df_luebest) %in% 
+                                             c("rH_site", "VPD_site", "DOP", "Es", "DAP", "dayl"))]
+
+# Load required library
+library(corrplot)
+
+# Compute correlation matrix (numeric columns only)
+cor_matrix <- cor(joined_df_luebest[, sapply(joined_df_luebest, is.numeric)], 
+                  use = "pairwise.complete.obs")
+
+# Save correlation plot as PNG
+png("C:/Users/rbmahbub/Documents/RProjects/GapfillingOtherRiceSites/Figure/LUE/corrplot_joined_df_luebest.png", 
+    width = 5000, height = 5000, res = 650)
+
+corrplot(cor_matrix, method = "color", type = "upper", 
+         tl.col = "black", tl.cex = 0.7, number.cex = 0.6, 
+         addCoef.col = "black")  # shows correlation values
+
+dev.off()
+
+# Extract correlations with LUE
+lue_cor <- cor_matrix[, "LUE"]
+
+# Remove self-correlation and excluded variables
+exclude_vars <- c("LUE", "fAPAR", "Tair_site", "GPP_site", "Lai")
+lue_cor <- lue_cor[!(names(lue_cor) %in% exclude_vars)]
+# Order by absolute correlation (but keep original values)
+lue_cor_sorted <- lue_cor[order(abs(lue_cor), decreasing = TRUE)]
+# Get top 5 VIs correlated with LUE
+top5_lue <- head(lue_cor_sorted, 5)
+# Print result (with sign preserved)
+print(top5_lue)
+
+
+#----------------------categort--------------------
+# Create a unique mapping of short_name to application_domain
+# Top 5 indices from correlation with LUE
+library(dplyr)
+
+# Top 5 indices from correlation with LUE
+top5_indices <- names(top5_lue)
+
+# Create a unique mapping of index -> domain and bands
+index_info_map <- results %>%
+  select(short_name, application_domain, bands) %>%
+  distinct(short_name, .keep_all = TRUE)
+
+# Map top 5 indices to their domain and bands
+top5_summary <- data.frame(
+  Index = top5_indices,
+  Correlation = top5_lue
+) %>%
+  left_join(index_info_map, by = c("Index" = "short_name")) %>%
+  rename(Domain = application_domain, BandsUsed = bands)
+
+# Print nicely
+print(top5_summary)
