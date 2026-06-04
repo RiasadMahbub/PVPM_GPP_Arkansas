@@ -1,99 +1,238 @@
+# Rice GPP Modeling in Arkansas: VPM, LUE-RF, and VI Approaches
+
+**Riasad Bin Mahbub** | University of Arkansas | 2023–2025
+
+This repository contains the complete analytical workflow for the manuscript:
+
+> *"Magnitude, drivers, and patterns of gross primary productivity of rice in Arkansas using a calibrated vegetation photosynthesis model"*
+
 ---
-title: "CodingBluePrint-PVPMWork"
-author: "Riasad Bin Mahbub"
-date: '2023-11-21'
-output:
-  pdf_document: default
-  html_document: default
+
+## Overview
+
+We model daily Gross Primary Productivity (GPP) of rice fields across Arkansas by combining eddy covariance (EC) tower measurements, harmonized satellite reflectance (Landsat 7/8 + Sentinel-2), and gridded meteorological data. Three complementary approaches are compared:
+
+| Model | Abbreviation | Method |
+|---|---|---|
+| Vegetation Photosynthesis Model | GPPVPM | LUEmax × Tscalar × Wscalar × fAPAR × PAR |
+| Random Forest LUE | GPPLUERF | RF-predicted LUE × fAPARLAI × PAR |
+| Vegetation Index linear | GPPVI | Linear regression: GPP ~ VI × PAR |
+
+**Key calibrated parameters for Arkansas rice:**
+- LUEmax = 0.06038 mol CO₂ mol⁻¹ PPFD
+- Topt = 30.02 °C
+
 ---
-```{r}
+
+## Repository Structure
 
 ```
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+PVPM_GPP_Arkansas/
+│
+├── Data/                          # Input datasets
+│   ├── EC_tower/                  # Half-hourly eddy covariance GPP by site-season
+│   ├── Meteorological/            # Site-level temp, PAR, VPD, humidity
+│   └── Satellite/                 # Harmonized VI time series (EVI, NDVI, LSWI, etc.)
+│
+├── Scripts/
+│   ├── R_Scripts/
+│   │   ├── VPM_Site/              # Active working scripts (use these)
+│   │   └── Archive/               # Legacy / exploratory scripts
+│   └── GEE_Scripts/
+│       └── VPM/
+│           └── YearWiseVPMStateScale/   # GEE export scripts for EVI, LSWI, T, PAR
+│
+└── Figures/                       # Output figures referenced in the manuscript
+    ├── LUEbiophysical.png
+    ├── GPPVI_dual_axis.png
+    ├── LAI_16sites_onelegend.png
+    ├── PVPMworkflow7-11-2024.png
+    ├── KFoldValidation.drawio.png
+    ├── best predictor seed node impurity.png
+    └── combined_fapar_plot.png
 ```
 
-## R Markdown
-The R scripts used for the manuscript "Magnitude, drivers, and patterns of gross primary productivity of rice in Arkansas using a calibrated vegetation photosynthesis model" are located in the following folder:
-PVPM_GPP_Arkansas/Scripts/R_Scripts/VPM_Spatial/
+---
 
-The google earth engine script to export EVI, LSWI, temperature and PAR data can be obtained from this folder 
-PVPM_GPP_Arkansas/Scripts/GEE_Scripts/VPM/YearWiseVPMStateScale
+## Study Design
 
-This repository contains the full workflow for modeling Gross Primary Productivity (GPP) using the Vegetation Photosynthesis Model (VPM) across Arkansas's rice-growing regions. The analysis combines satellite remote sensing, environmental drivers, and in-situ eddy covariance calibration to assess spatial and temporal GPP patterns and their relationship with rice yield.
+- **Sites:** 10 EC tower rice fields in Arkansas (16 site-seasons, 2015–2018)
+- **Temporal resolution:** Daily
+- **Spatial resolution:** Field-scale
+- **Validation:** k-fold cross-validation — 10 sites training / 3 validation / 3 testing
 
-1. Satellite Data Preparation (Google Earth Engine)
+![Workflow](Figures/PVPMworkflow7-11-2024.png)
 
-    Years: 2015–2018 (Site-Scale) and 2008–2020 (Spatial)
+---
 
-    Indices: EVI (to derive FPAR) and LSWI (to derive water stress)
+## Workflow
 
-    Post-processing: Filter raster images using a 50% rice-pixel threshold.
+### Step 1 — Satellite Data Preparation (Google Earth Engine)
 
-2. Site Calibration (R Scripts)
+Run the GEE scripts in `Scripts/GEE_Scripts/VPM/YearWiseVPMStateScale/` to export:
+- EVI and LSWI (for fAPAR and water stress)
+- Temperature and PAR (gridded drivers)
+- Harmonized Landsat 7/8 + Sentinel-2 reflectance (30 m, daily gap-filled)
 
-    Run SiteScaleAnalysis_DataReadingMerging.R and Function.R
+Harmonization steps include cloud masking, BRDF correction, inter-sensor band adjustment (using SIAC atmospheric correction), and Savitzky–Golay smoothing.
 
-    Calibrate LUEmax and Topt based on EC tower data
+### Step 2 — Site-Scale Data Assembly
 
-        Final site-calibrated values:
+```
+Scripts/R_Scripts/VPM_Site/SiteDataDaily.R
+Scripts/R_Scripts/VPM_Site/SiteDailyData_Function.R
+```
 
-            LUEmax = 0.06038462
+- Reads and merges EC tower GPP, site meteorological data, and satellite VIs
+- Computes daily GDD, cumulative GDD, cumulative daylength, DAP, DOP
+- Calculates fAPAR using three methods: EVI-based, NDVI-based, LAI-based (Beer–Lambert)
 
-            Topt = 30.02308 °C
+**fAPAR comparison:**
 
-    Validate site model performance against EC-observed GPP
+![fAPAR methods](Figures/combined_fapar_plot.png)
 
-    Compare against biome-default VPM parameters
+LAI-based fAPAR (Beer–Lambert: `1 − exp(−0.5 × LAI)`) was selected as the most physically consistent method — only 0.1% of resulting LUE values exceeded 1 g C mol⁻¹ photon, versus 7.2% for EVI-based and 9.9% for NDVI-based.
 
-3. VPM Modeling in Earth Engine
+![LAI across sites](Figures/LAI_16sites_onelegend.png)
 
-    Use calibrated parameters in the 2015–2018 GEE scripts
+### Step 3 — VPM Calibration
 
-    Export final VPM GPP images to CumulativeVPM and VPMDriver
+```
+Scripts/R_Scripts/VPM_Site/LUEmaxGDDallsites.R
+Scripts/R_Scripts/VPM_Site/VPM_model.R
+```
 
-4. Model Evaluation (R)
+Calibrate LUEmax and Topt against GPPEC data. Site-calibrated values for Arkansas rice (LUEmax = 0.060, Topt = 30.02 °C) outperform biome-default parameters.
 
-    Scripts: ModeledPVPMVPM_satelliteProcessing.R, VPMYieldGPP_CountyMaps_Yearwise.R
+### Step 4 — LUE Dynamics and Feature Selection
 
-    Analyze:
+```
+Scripts/R_Scripts/VPM_Site/PVPM_RFE.R
+Scripts/R_Scripts/VPM_Site/ExplainRandomForestLUE.R
+```
 
-        GPP vs Yield (correlation, Mann-Kendall trend test)
+LUEobserved = GPPEC / (fAPARLAI × PARsite)
 
-        Mixed pixel effect
+Recursive Feature Elimination (RFE) identified 19 optimal predictors from vegetation indices, water indices, meteorological drivers, phenological features, and a soil index.
 
-        County-level boxplots and spatial maps
+**LUE biophysical dynamics:**
 
-    Yield data from: Harvested_ACre_Rice_Arkansas.csv
+![LUE biophysical](Figures/LUEbiophysical.png)
 
-5. Driver Analysis
+LUE peaks around 1,200 °C cumulative GDD (mid-reproductive stage) and declines toward harvest. The pattern is consistent across all 16 site-seasons.
 
-    Script: Drivers_EVI_T_Precipitation_LSWI.R
+**Top predictors (node impurity):**
 
-    Input Variables: EVI, LSWI, Temp, PAR, Cropping Frequency, PD
+![Feature importance](Figures/best%20predictor%20seed%20node%20impurity.png)
 
-    Outputs:
+### Step 5 — Random Forest LUE Model (GPPLUERF)
 
-        Multi-year trends
+```
+Scripts/R_Scripts/VPM_Site/PVPM_Model.R
+Scripts/R_Scripts/VPM_Site/PVPM_model_78Runs.R
+Scripts/R_Scripts/VPM_Site/SeedRunRandomForest.R
+```
 
-        Driver vs GPP plots
+Trains a Random Forest on the 19 selected predictors to predict LUERF. Final GPP:
 
-        Summary tables
+```
+GPPLUERF = LUERF × fAPARLAI × PARsite
+```
 
-6. Raster Handling and Export
+Cross-validation structure:
 
-    Project rasters (EVI, LSWI, Temp) to match VPM spatial resolution
+![K-fold validation](Figures/KFoldValidation.drawio.png)
 
-    Script: AllDriverinOneScript-Projecting500.R
+Key predictors: ExG, IAVI, VARI (greenness); AWEInsh, MLSWI26, MuWIR (water stress); Tair, rH, VPD, Es (microclimate); GDDcum, daylcum, DAP, DOP (phenology).
 
-    Outputs stored for downstream driver correlation analysis
+### Step 6 — VI Linear Model (GPPVI)
 
-7. Advanced Analysis
+```
+Scripts/R_Scripts/VPM_Site/SingleVI.R
+Scripts/R_Scripts/VPM_Site/SingleVI_LUE.R
+Scripts/R_Scripts/VPM_Site/SingleVI78Runs.R
+```
 
-    Year-by-year regional raster processing (VPMMeanRasterImageAnalysis2008_2020.R)
+Evaluates 8 vegetation indices (IAVI, VARI, NDVI, TSAVI, RNDVI, kNDVI, EVI, ATSAVI) using:
 
-    Interannual trends (VPM_InterannualGraph.R)
+```
+GPPVI = c + w × (VI × PARsite)
+```
 
-    Distribution check between filtered vs full GPP (Distributioncheck50percentricepixelversusfullricepixel)
+![VI model comparison](Figures/GPPVI_dual_axis.png)
 
+### Step 7 — Spatial GPP Modeling (State Scale)
+
+```
+Scripts/R_Scripts/VPM_Site/ModeledPVPMVPM_satelliteProcessing.R
+Scripts/R_Scripts/VPM_Site/plot_PVPM_sitescale.R
+```
+
+Applies calibrated VPM across Arkansas rice pixels (2008–2020, 500 m) exported from GEE. Analyzes spatial and interannual GPP patterns and their relationship with county-level rice yield.
+
+---
+
+## R Script Reference
+
+| Script | Purpose |
+|---|---|
+| `SiteDataDaily.R` | Main data reading and merging pipeline |
+| `SiteDailyData_Function.R` | Helper functions for data assembly |
+| `SiteDataDailyBruteForce.R` | Alternative brute-force data assembly |
+| `VIMeteoCheck.R` | Quality checks on VI and meteorological inputs |
+| `fAPAR_EVI_NDVI_LAI.R` | fAPAR calculation and comparison |
+| `LUEmaxGDDallsites.R` | LUEmax calibration across sites |
+| `GraphMakingLUEmax.R` | LUE visualization across GDD |
+| `VPM_model.R` | VPM implementation with calibrated parameters |
+| `PVPM_RFE.R` | Recursive Feature Elimination for LUE predictors |
+| `PVPM_Model.R` | Core RF model training, validation, and testing |
+| `PVPM_model_78Runs.R` | Multi-run RF model for stability assessment |
+| `SeedRunRandomForest.R` | Seed-based reproducible RF runs |
+| `ExplainRandomForestLUE.R` | SHAP / importance-based RF interpretation |
+| `SingleVI.R` | Single-VI GPP linear model |
+| `SingleVI_LUE.R` | Single-VI LUE linear model |
+| `SingleVI78Runs.R` | Multi-run VI model evaluation |
+| `ModeledPVPMVPM_satelliteProcessing.R` | Spatial raster GPP processing |
+| `plot_PVPM_sitescale.R` | Site-scale GPP visualization |
+
+---
+
+## Key Dependencies
+
+```r
+# Install all required packages
+install.packages(c(
+  "randomForest", "ggplot2", "ggpubr", "dplyr",
+  "caTools", "viridis", "Metrics", "caret"
+))
+```
+
+---
+
+## Data Sources
+
+| Dataset | Variable(s) | Source |
+|---|---|---|
+| Eddy covariance GPP | GPPEC | Site PI networks (Leavitt, Reba, Massey et al.) |
+| Landsat 7/8, Sentinel-2 | EVI, NDVI, LSWI, + 13 VIs | GEE / EROS / Copernicus |
+| PRISM | Tair, Tmax, Tmin, precip | Daly et al. (2008) |
+| gridMET | VPD, RH, DSWR | Abatzoglou (2013) |
+| Daymet | Daylength | Thornton et al. (2014) |
+| VIIRS LAI/FPAR v2 | LAI | Myneni (2023) |
+| PML_V2 | Ec, Es, Ei, ET | Y. Zhang et al. (2019) |
+
+---
+
+## Citation
+
+If you use this code, please cite:
+
+> Mahbub, R.B. et al. (2025). *Magnitude, drivers, and patterns of gross primary productivity of rice in Arkansas using a calibrated vegetation photosynthesis model.* Agricultural and Forest Meteorology, 369, 110583.
+
+---
+
+## Contact
+
+**Riasad Bin Mahbub**
+University of Arkansas
+rbmahbub@uark.edu
