@@ -1,6 +1,6 @@
 # Rice GPP Modeling in Arkansas: VPM, LUE-RF, and VI Approaches
 
-**Riasad Bin Mahbub** | University of Arkansas | 2023–2025
+**Riasad Bin Mahbub** | University of Arkansas | 2021–2026
 
 This repository contains the complete analytical workflow for the manuscript:
 
